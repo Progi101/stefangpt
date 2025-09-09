@@ -1,4 +1,3 @@
-
 // FIX: Corrected typo in React hooks import statement.
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
@@ -92,7 +91,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
     const messageRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!messageRef.current || (content.type !== 'text' && content.type !== 'search')) return;
+        // Safety checks to prevent crashes
+        if (!messageRef.current || !messageRef.current.isConnected) return;
+        if (content.type !== 'text' && content.type !== 'search') return;
 
         const roots: any[] = [];
         const preElements = messageRef.current.querySelectorAll('pre');

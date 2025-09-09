@@ -151,7 +151,7 @@ const LoginPage: React.FC = () => {
 
           <div className="pt-2">
             <p className="text-xs text-slate-500 text-center px-4">
-              Note: Accounts are stored locally on your device. Use the Export/Import feature in Settings to move your account between devices.
+              The AI can sometimes be a bit slow because it's working hard to find the best possible answers for you!
             </p>
           </div>
 

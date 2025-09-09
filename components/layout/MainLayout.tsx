@@ -10,10 +10,36 @@ import { getChatSessions, saveChatSessions } from '../../services/storageService
 import Icon, { MenuIcon } from '../common/Icon';
 import { generateChatResponse, generateTitleForChat, performWebSearch } from '../../services/geminiService';
 import { generateImage } from '../../services/stabilityImageService';
+import BottomNavBar from './BottomNavBar';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
 
 type ViewType = 'chat' | 'library' | 'about';
+
+const useMediaQuery = (query: string): boolean => {
+    const [matches, setMatches] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return window.matchMedia(query).matches;
+        }
+        return false;
+    });
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const media = window.matchMedia(query);
+        const listener = () => setMatches(media.matches);
+        
+        if (media.matches !== matches) {
+            setMatches(media.matches);
+        }
+
+        media.addEventListener('change', listener);
+        return () => media.removeEventListener('change', listener);
+    }, [matches, query]);
+
+    return matches;
+};
 
 const MainLayout: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -26,6 +52,7 @@ const MainLayout: React.FC = () => {
     }
     return false;
   });
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
 
   const handleNewChat = useCallback(() => {
@@ -264,7 +291,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen relative overflow-hidden">
-      {isHistoryPanelOpen && (
+      {isHistoryPanelOpen && !isDesktop && (
           <div 
               onClick={() => setIsHistoryPanelOpen(false)}
               className="fixed inset-0 bg-black/30 z-20 md:hidden"
@@ -273,7 +300,7 @@ const MainLayout: React.FC = () => {
       )}
       <div className={`
         w-4/5 sm:w-80 md:w-64 h-full shrink-0 transform transition-all duration-300 ease-in-out
-        absolute md:static z-30
+        fixed md:static z-30
         ${isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-full md:ml-[-16rem]'}
       `}>
         <HistoryPanel
@@ -286,7 +313,7 @@ const MainLayout: React.FC = () => {
             onClose={() => setIsHistoryPanelOpen(false)}
         />
       </div>
-      <main className="flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+      <main className={`flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden ${!isDesktop ? 'pb-16' : ''}`}>
         {view === 'chat' && activeSession ? (
           <ChatWindow 
             key={activeSession.id} 
@@ -308,6 +335,14 @@ const MainLayout: React.FC = () => {
           </div>
         )}
       </main>
+      {!isDesktop && (
+        <BottomNavBar
+            onNewChat={handleNewChat}
+            onShowLibrary={handleShowLibrary}
+            onToggleHistory={() => setIsHistoryPanelOpen(true)}
+            activeView={view}
+        />
+       )}
     </div>
   );
 };
