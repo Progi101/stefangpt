@@ -1,4 +1,4 @@
-// A Netlify Function will handle the actual API call to Stability AI.
+// A Netlify Function will handle the actual API call to the image service.
 // This service just calls our own backend function.
 
 export const generateImage = async (prompt: string): Promise<string> => {
@@ -16,9 +16,9 @@ export const generateImage = async (prompt: string): Promise<string> => {
             throw new Error(errorData.error || 'Failed to generate image.');
         }
 
-        const { image } = await response.json();
-        // The server function returns a base64 string, so we prepend the data URL prefix
-        return `data:image/png;base64,${image}`;
+        const { imageUrl } = await response.json();
+        // The server function now returns a direct URL.
+        return imageUrl;
     } catch (error) {
         console.error("Error generating image:", error);
         if (error instanceof Error) {
