@@ -103,8 +103,8 @@ export const handler: Handler = async (event) => {
                             ...(response.candidates?.[0]?.safetyRatings || [])
                         ];
                         const blockedCategories = safetyRatings
-                            .filter(rating => rating.blocked)
-                            .map(rating => rating.category.replace('HARM_CATEGORY_', '').toLowerCase())
+                            .filter(rating => rating.blocked && rating.category)
+                            .map(rating => rating.category!.replace('HARM_CATEGORY_', '').toLowerCase())
                             .filter((value, index, self) => self.indexOf(value) === index);
                         
                         if (blockedCategories.length > 0) {
