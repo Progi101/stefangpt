@@ -1,8 +1,8 @@
 import { Handler } from '@netlify/functions';
+import { Buffer } from 'buffer';
 
 const STABILITY_API_KEY = process.env.STABILITY_API_KEY;
-// Using the v1 REST API which uses JSON, as it's often more reliable in serverless environments than multipart/form-data.
-const API_URL = "https://api.stability.ai/v1/generation/stable-diffusion-3-medium/text-to-image";
+const API_URL = "https://api.stability.ai/v2beta/stable-image/generate/sd3";
 
 export const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -22,55 +22,53 @@ export const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Prompt is required.' }) };
         }
 
-        const body = {
-            text_prompts: [{ text: prompt }],
-            cfg_scale: 7,
-            height: 1024,
-            width: 1024,
-            samples: 1,
-            steps: 30,
-        };
+        // FormData is natively available in the Netlify Function environment (Node.js).
+        const formData = new FormData();
+        formData.append('prompt', prompt);
+        formData.append('model', 'sd3-medium');
+        formData.append('output_format', 'png');
+        formData.append('aspect_ratio', '1:1');
 
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${STABILITY_API_KEY}`,
-                'Accept': 'application/json' 
+                'Accept': 'image/*' // Expect an image response on success.
             },
-            body: JSON.stringify(body),
+            body: formData,
         });
 
         if (!response.ok) {
-            const errorText = await response.text(); 
+            const errorText = await response.text();
             console.error('Stability AI API error:', errorText);
-            
+
             let errorMessage = `Stability AI API responded with status: ${response.status}`;
             try {
-                // The API often returns a JSON object with a 'message' field on error
                 const errorJson = JSON.parse(errorText);
-                if(errorJson.message) {
-                    errorMessage = `Stability AI error: ${errorJson.message}`;
+                if (errorJson.errors && Array.isArray(errorJson.errors)) {
+                     errorMessage = `Stability AI error: ${errorJson.errors.join(', ')}`;
+                } else if (errorJson.message) {
+                     errorMessage = `Stability AI error: ${errorJson.message}`;
                 }
             } catch (e) {
-                // Not a JSON error, use the raw text
+                 // The error response wasn't JSON.
                  errorMessage += `. Response: ${errorText}`;
             }
-            // For 401, it's almost always a key issue.
-            if(response.status === 401) {
+
+            // Provide a more user-friendly message for common issues.
+            if (response.status === 401) {
                 errorMessage = "Authentication failed. Please check your Stability AI API key in the Netlify environment variables.";
             }
+            if (response.status === 404 && errorText.includes("not found")) {
+                errorMessage = "The requested model was not found. The API may have changed.";
+            }
+
             throw new Error(errorMessage);
         }
 
-        const responseJson = await response.json() as { artifacts: { base64: string }[] };
-        
-        if (!responseJson.artifacts || responseJson.artifacts.length === 0) {
-            throw new Error('API returned no images.');
-        }
+        const imageBuffer = await response.arrayBuffer();
+        const imageBase64 = Buffer.from(imageBuffer).toString('base64');
 
-        const imageBase64 = responseJson.artifacts[0].base64;
-        
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
