@@ -6,10 +6,11 @@
   "type": "module",
   "description": "Netlify functions for StefanGPT",
   "dependencies": {
-    "@google/genai": "^1.17.0",
+    "@google/genai": "^0.14.0",
     "@netlify/functions": "^4.2.5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",
