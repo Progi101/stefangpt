@@ -1,9 +1,16 @@
 import { Handler } from '@netlify/functions';
+import { Buffer } from 'buffer';
 
-// No API key is needed for the public source.unsplash.com API.
+const HUGGING_FACE_API_KEY = process.env.HUGGING_FACE_API_KEY;
+const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+
 export const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    }
+
+    if (!HUGGING_FACE_API_KEY) {
+        return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error: Hugging Face API key is not set.' }) };
     }
 
     try {
@@ -12,28 +19,38 @@ export const handler: Handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: 'Prompt is required.' }) };
         }
 
-        // Clean the prompt to get keywords for the Unsplash search.
-        const keywords = prompt
-            .toLowerCase()
-            .replace(/^(generate|create|draw|image of|picture of|icon of|logo of)\s+/, '') // Remove command words.
-            .replace(/\s+/g, ',') // Replace spaces with commas for better search results.
-            .trim();
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${HUGGING_FACE_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ inputs: prompt }),
+        });
 
-        const unsplashUrl = `https://source.unsplash.com/1024x768/?${keywords}`;
-        
-        // Fetch the URL. The `fetch` response object will contain the final URL after redirection.
-        const response = await fetch(unsplashUrl);
-        
-        // The final image URL is in the `response.url` property.
-        // A successful fetch will result in a URL from images.unsplash.com.
-        if (!response.ok || !response.url.startsWith('https://images.unsplash.com')) {
-             throw new Error('Could not fetch an image from Unsplash. The topic might be too specific or there was a network issue.');
+        // The API might return a JSON error if the model is loading or there's an issue
+        if (response.headers.get('content-type')?.includes('application/json')) {
+            const errorBody = await response.json();
+            if (errorBody.error && typeof errorBody.error === 'string' && errorBody.error.includes("is currently loading")) {
+                 throw new Error("The image model is warming up. Please try again in about 30 seconds.");
+            }
+            throw new Error(errorBody.error || `Hugging Face API responded with an error.`);
         }
+        
+        if (!response.ok) {
+            throw new Error(`Hugging Face API responded with status: ${response.status}`);
+        }
+
+        // The successful response is a blob (the image itself)
+        const imageBlob = await response.blob();
+        const buffer = Buffer.from(await imageBlob.arrayBuffer());
+        const base64Image = buffer.toString('base64');
+        const dataUrl = `data:${imageBlob.type};base64,${base64Image}`;
 
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageUrl: response.url }), // Return the final, direct image URL.
+            body: JSON.stringify({ imageUrl: dataUrl }),
         };
 
     } catch (error) {

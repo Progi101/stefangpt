@@ -9,7 +9,7 @@ import { ChatSession, Message, MessageSender, MessageContent } from '../../types
 import { getChatSessions, saveChatSessions } from '../../services/storageService';
 import Icon, { MenuIcon } from '../common/Icon';
 import { generateChatResponse, generateTitleForChat, performWebSearch } from '../../services/geminiService';
-import { generateImage } from '../../services/stabilityImageService';
+import { generateImage } from '../../services/imageService';
 import BottomNavBar from './BottomNavBar';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
