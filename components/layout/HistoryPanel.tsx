@@ -1,8 +1,9 @@
-import React, { useState, Fragment } from 'react';
+import React, { useState, Fragment, useRef } from 'react';
 import { ChatSession } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import Icon, { PlusIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, SettingsIcon, SunIcon, MoonIcon, XIcon, InformationCircleIcon, ChatBubbleLeftRightIcon } from '../common/Icon';
+import { exportUserData, importUserData } from '../../services/storageService';
+import Icon, { PlusIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, SettingsIcon, SunIcon, MoonIcon, XIcon, InformationCircleIcon, ChatBubbleLeftRightIcon, DownloadIcon, ArrowUpTrayIcon } from '../common/Icon';
 import Logo from '../common/Logo';
 
 interface HistoryPanelProps {
@@ -22,10 +23,54 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const filteredSessions = sessions.filter(session =>
     session.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleExport = () => {
+    const dataStr = exportUserData();
+    if (dataStr && user) {
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const date = new Date().toISOString().split('T')[0];
+        link.download = `stefan_gpt_backup_${user.username}_${date}.json`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          if (!window.confirm("Importing a backup file will overwrite all current data. This action cannot be undone. Are you sure you want to continue?")) {
+              if (importInputRef.current) importInputRef.current.value = "";
+              return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+              const text = e.target?.result;
+              if (typeof text === 'string') {
+                  const result = importUserData(text);
+                  alert(result.message);
+                  if (result.success) {
+                      window.location.reload();
+                  }
+              } else {
+                  alert("Failed to read the file.");
+              }
+          };
+          reader.readAsText(file);
+      }
+      if (importInputRef.current) importInputRef.current.value = "";
+  };
+
 
   return (
     <Fragment>
@@ -109,6 +154,19 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
                               </button>
                           </div>
                       </div>
+                      <div className="border-t border-gray-200 dark:border-gray-700"></div>
+                        <div className="p-2">
+                            <p className="text-xs px-2 pb-1 text-gray-400">Account Data</p>
+                            <div className="flex space-x-2">
+                                <button onClick={handleExport} className="flex-1 flex items-center justify-center p-2 rounded-md text-sm hover:bg-gray-200 dark:hover:bg-gray-700">
+                                    <Icon icon={DownloadIcon} className="w-5 h-5 mr-2"/> Export
+                                </button>
+                                <button onClick={() => importInputRef.current?.click()} className="flex-1 flex items-center justify-center p-2 rounded-md text-sm hover:bg-gray-200 dark:hover:bg-gray-700">
+                                    <Icon icon={ArrowUpTrayIcon} className="w-5 h-5 mr-2"/> Import
+                                </button>
+                                <input type="file" ref={importInputRef} onChange={handleImport} accept=".json" className="hidden" />
+                            </div>
+                        </div>
                   </div>
               )}
               <button

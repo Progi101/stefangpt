@@ -151,7 +151,7 @@ const LoginPage: React.FC = () => {
 
           <div className="pt-2">
             <p className="text-xs text-slate-500 text-center px-4">
-              Note: For your privacy, accounts are stored locally on this device and browser only. They will not sync across devices.
+              Note: Accounts are stored locally on your device. Use the Export/Import feature in Settings to move your account between devices.
             </p>
           </div>
 

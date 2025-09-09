@@ -109,3 +109,50 @@ export const getChatSession = (id: string): ChatSession | undefined => {
     const sessions = getChatSessions();
     return sessions.find(s => s.id === id);
 }
+
+// --- Data Portability ---
+
+export const exportUserData = (): string | null => {
+  const user = getCurrentUser();
+  if (!user) {
+    return null;
+  }
+  const chats = getChatSessions();
+  
+  const portableData = {
+    user,
+    chats,
+    format: 'stefan_gpt_backup',
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+  };
+
+  return JSON.stringify(portableData, null, 2);
+};
+
+export const importUserData = (jsonString: string): { success: boolean; message: string } => {
+  try {
+    const data = JSON.parse(jsonString);
+
+    if (data.format !== 'stefan_gpt_backup' || !data.user || !Array.isArray(data.chats)) {
+      throw new Error("Invalid or corrupted backup file.");
+    }
+
+    const { user, chats } = data;
+    
+    const allUsers = getUsers();
+    allUsers[user.username.toLowerCase()] = user;
+    saveUsers(allUsers);
+    
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+    
+    saveChatSessions(chats);
+
+    return { success: true, message: `Successfully imported account for ${user.username}. The page will now reload.` };
+
+  } catch (error) {
+    console.error("Import failed:", error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, message: `Import failed: ${message}` };
+  }
+};
