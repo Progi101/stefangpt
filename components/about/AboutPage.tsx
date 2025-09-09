@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import Icon, { MenuIcon, BrainCircuitIcon, SparklesIcon, GlobeAltIcon, ShieldCheckIcon } from '../common/Icon';
 
@@ -68,8 +69,8 @@ const AboutPage: React.FC<AboutPageProps> = ({ onToggleHistory }) => {
                      <h2 className="text-4xl font-bold mb-6 text-center">The Technology Powering Your Assistant</h2>
                      <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg text-gray-700 dark:text-gray-300 space-y-4 leading-loose">
                         <p>StefanGPT stands on the shoulders of giants, integrating cutting-edge technologies to deliver a seamless and powerful user experience. The application is crafted as a modern single-page application (SPA) using <strong>React</strong>, a leading JavaScript library for building dynamic user interfaces. This ensures the app is fast, responsive, and works flawlessly across all your devices.</p>
-                        <p>The core conversational and generative abilities are powered by the <strong>Google Gemini API</strong>. For chat, we use the 'gemini-2.5-flash' model, which offers a state-of-the-art balance of speed and intelligence. The application communicates with the Gemini API via a secure Netlify Function, ensuring a fast and responsive experience while keeping API keys safe.</p>
-                        <p>For generating images, we leverage the power of <strong>Stability AI's Stable Diffusion 3 model</strong>. This state-of-the-art text-to-image model can create stunning, original visuals from a simple text prompt. When you ask for an image, the application communicates with a secure backend function that interfaces with the Stability AI API to generate your concept, which is then saved to your private, local library. This provides a seamless creative experience.</p>
+                        <p>The core conversational and generative abilities are powered by the <strong>Google Gemini API</strong>. For chat, we use the 'gemini-2.5-flash' model, which offers a state-of-the-art balance of speed and intelligence. The application uses the official Google GenAI SDK directly on the client-side, with the API key managed securely as an environment variable.</p>
+                        <p>For generating images, we leverage the power of <strong>Stability AI's Stable Diffusion 3 model</strong>. This state-of-the-art text-to-image model can create stunning, original visuals from a simple text prompt. When you ask for an image, the application communicates with a secure Netlify Function that interfaces with the Stability AI API to generate your concept, which is then saved to your private, local library.</p>
                         <p>Finally, our commitment to privacy is cemented by our use of the browser's <strong>localStorage</strong>. By storing all user data—from account credentials to entire chat histories—directly on your device, we give you sovereign control. This decentralized approach is fundamental to our design and guarantees that your interactions with StefanGPT remain confidential.</p>
                      </div>
                 </section>

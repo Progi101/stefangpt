@@ -1,14 +1,15 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import HistoryPanel from './HistoryPanel';
 import ChatWindow from '../chat/ChatWindow';
 import LibraryView from '../library/LibraryView';
 import AboutPage from '../about/AboutPage';
-import { ChatSession, Message, MessageSender, MessageContent, UserQueryContent } from '../../types';
+import { ChatSession, Message, MessageSender, MessageContent } from '../../types';
 import { getChatSessions, saveChatSessions } from '../../services/storageService';
 import Icon, { MenuIcon } from '../common/Icon';
 import { generateChatResponse, generateTitleForChat, performWebSearch } from '../../services/geminiService';
-import { generateImage } from '../../services/geminiImageService';
+import { generateImage } from '../../services/stabilityImageService';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
 
@@ -85,9 +86,11 @@ const MainLayout: React.FC = () => {
             newSessions = [...currentSessions];
             newSessions[sessionIndex] = updatedSession;
         } else {
+            // This case should not happen often with the current logic, but it's a safeguard
             newSessions = [updatedSession, ...currentSessions];
         }
 
+        // Ensure the updated session is always at the top
         const finalSessions = [updatedSession, ...newSessions.filter(s => s.id !== updatedSession.id)];
         saveChatSessions(finalSessions);
         return finalSessions;
@@ -128,6 +131,7 @@ const MainLayout: React.FC = () => {
     const activeSession = sessions.find(s => s.id === activeSessionId);
     if (!activeSession) return;
     
+    // Create the user message
     const userMessageContent: MessageContent = attachment
       ? { type: 'user-query', text: prompt, imageUrl: attachment.dataUrl }
       : { type: 'text', text: prompt };
@@ -138,30 +142,29 @@ const MainLayout: React.FC = () => {
       content: userMessageContent,
     };
 
+    // Update UI immediately with user's message
     const sessionWithUserMessage = {
       ...activeSession,
       messages: [...activeSession.messages, userMessage],
     };
-    
     handleSessionUpdate(sessionWithUserMessage);
     setIsLoading(true);
     
     try {
         let aiMessages: Message[] = [];
-        const fileBlockRegex = /```json-files\s*([\s\S]*?)\s*```/;
-        let primaryContent: MessageContent | null = null;
         let commandMatched = false;
 
-        // If an image is attached, we assume it's a multimodal chat prompt and skip command checks.
+        // Command processing should only happen for text-only prompts
         if (!attachment) {
-            const lowercasedInput = prompt.toLowerCase();
+            const lowercasedInput = prompt.toLowerCase().trim();
             const searchPrefixes = ['search', 'find', 'lookup', 'google'];
             const imagePrefixes = ['generate', 'create', 'draw', 'image of', 'picture of', 'icon of', 'logo of'];
 
             for (const prefix of searchPrefixes) {
                 if (lowercasedInput.startsWith(prefix + ' ')) {
                     const searchPrompt = prompt.substring(prefix.length + 1).trim();
-                    primaryContent = await performWebSearch(searchPrompt);
+                    const searchContent = await performWebSearch(searchPrompt);
+                    aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: searchContent });
                     commandMatched = true;
                     break;
                 }
@@ -171,53 +174,76 @@ const MainLayout: React.FC = () => {
                     if (lowercasedInput.startsWith(prefix + ' ')) {
                         const imagePrompt = prompt.substring(prefix.length + 1).trim();
                         const imageUrl = await generateImage(imagePrompt);
-                        primaryContent = { type: 'image', imageUrl, prompt: imagePrompt };
+                        aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'image', imageUrl, prompt: imagePrompt } });
                         commandMatched = true;
                         break;
                     }
                 }
             }
         }
-
-        if (primaryContent) {
-            aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: primaryContent });
-        } else {
+        
+        // If no command was matched, proceed with a general chat response
+        if (!commandMatched) {
             const responseText = await generateChatResponse(sessionWithUserMessage.messages);
+            const fileBlockRegex = /```json-files\s*([\s\S]*?)\s*```/s; // Use 's' flag for dotAll
             const match = responseText.match(fileBlockRegex);
 
             if (match && match[1]) {
                 try {
-                    const filesJson = JSON.parse(match[1]);
-                    if (Array.isArray(filesJson) && filesJson.length > 0 && filesJson[0].filename && filesJson[0].content) {
-                        const explanationText = responseText.replace(fileBlockRegex, '').trim();
-                        
-                        aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'files', files: filesJson } });
+                    // Extract explanation text that is outside the json block
+                    const explanationText = responseText.replace(fileBlockRegex, '').trim();
 
+                    const filesJson = JSON.parse(match[1]);
+                    // Basic validation of the parsed JSON
+                    if (Array.isArray(filesJson) && filesJson.length > 0 && filesJson.every(f => 'filename' in f && 'content' in f)) {
+                        // Add files content first
+                        aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'files', files: filesJson } });
+                        
+                        // If there's accompanying text, add it as a separate message
                         if (explanationText) {
                              aiMessages.push({ id: (Date.now() + 2).toString(), sender: MessageSender.AI, content: { type: 'text', text: explanationText } });
                         }
                     } else {
+                         // The JSON is malformed, treat the whole thing as text
                          aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'text', text: responseText } });
                     }
                 } catch (e) {
+                     // JSON parsing failed, treat the whole response as a single text message
                      aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'text', text: responseText } });
                 }
             } else {
+                 // No file block found, just a regular text response
                  aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'text', text: responseText } });
             }
         }
         
-        let sessionAfterAI = {
+        // Update session with AI response(s) immediately
+        const sessionAfterAI = {
             ...sessionWithUserMessage,
             messages: [...sessionWithUserMessage.messages, ...aiMessages],
         };
-        
-        if (sessionWithUserMessage.messages.length <= 2 && sessionWithUserMessage.title === 'New Chat') {
-            const newTitle = await generateTitleForChat(prompt);
-            sessionAfterAI = { ...sessionAfterAI, title: newTitle };
-        }
-        
         handleSessionUpdate(sessionAfterAI);
+
+        // Generate title for new chats asynchronously
+        if (sessionWithUserMessage.messages.length <= 2 && sessionWithUserMessage.title === 'New Chat') {
+            (async () => {
+                try {
+                    const newTitle = await generateTitleForChat(prompt);
+                    setSessions(currentSessions => {
+                        const sessionIndex = currentSessions.findIndex(s => s.id === activeSessionId);
+                        if (sessionIndex > -1) {
+                            const newSessions = [...currentSessions];
+                            newSessions[sessionIndex] = { ...newSessions[sessionIndex], title: newTitle };
+                            saveChatSessions(newSessions);
+                            return newSessions;
+                        }
+                        return currentSessions;
+                    });
+                } catch (error) {
+                    console.error("Title generation failed:", error);
+                }
+            })();
+        }
 
     } catch (error) {
         console.error("Error processing AI response:", error);
@@ -225,7 +251,7 @@ const MainLayout: React.FC = () => {
         const errorMessage: Message = {
             id: (Date.now() + 1).toString(),
             sender: MessageSender.AI,
-            content: { type: 'text', text: errorMessageText },
+            content: { type: 'text', text: `<span style="color: #ef4444;">${errorMessageText}</span>` },
         };
         const sessionWithError = { ...sessionWithUserMessage, messages: [...sessionWithUserMessage.messages, errorMessage] };
         handleSessionUpdate(sessionWithError);

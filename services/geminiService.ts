@@ -1,32 +1,38 @@
-
 import { Message, SearchResultContent } from '../types';
-import { callApiFunction } from './api';
 
-export const generateChatResponse = async (history: Message[]): Promise<string> => {
-    const data = await callApiFunction('chat', { history });
-    if (data.text) {
-        return data.text;
+const callGeminiApi = async (type: string, payload: any) => {
+    try {
+        const response = await fetch('/.netlify/functions/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, payload }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `API call failed with status ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Error in ${type} API call:`, error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to get a response from the AI: ${error.message}`);
+        }
+        throw new Error('An unknown error occurred while contacting the AI.');
     }
-    throw new Error("Failed to get a valid chat response from the server.");
 };
 
-export const generateTitleForChat = async (firstMessage: string): Promise<string> => {
-    try {
-        const data = await callApiFunction('title', { message: firstMessage });
-        if (data.title) {
-            return data.title;
-        }
-        return "New Chat"; // Fallback on empty title
-    } catch (error) {
-        console.error("Error generating title, falling back.", error);
-        return "New Chat"; // Fallback on error
-    }
+export const generateChatResponse = async (messages: Message[]): Promise<string> => {
+    const data = await callGeminiApi('chat', { messages });
+    return data.text;
+};
+
+export const generateTitleForChat = async (prompt: string): Promise<string> => {
+    const data = await callGeminiApi('title', { prompt });
+    return data.title;
 };
 
 export const performWebSearch = async (prompt: string): Promise<SearchResultContent> => {
-    const data = await callApiFunction('search', { prompt });
-    if (data.result) {
-        return data.result;
-    }
-    throw new Error("Failed to get valid search results from the server.");
+    const data = await callGeminiApi('search', { prompt });
+    return data.result;
 };

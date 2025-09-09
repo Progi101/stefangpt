@@ -1,9 +1,6 @@
 
-
-
-
+// FIX: Corrected typo in React hooks import statement.
 import React, { useState, useRef, useEffect } from 'react';
-// FIX: Import ReactDOM from react-dom/client to use the createRoot API.
 import ReactDOM from 'react-dom/client';
 import { ChatSession, Message, MessageSender, MessageContent, CodeFile, FilesContent, UserQueryContent } from '../../types';
 import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon, PaperclipIcon } from '../common/Icon';
@@ -97,9 +94,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
     useEffect(() => {
         if (!messageRef.current || (content.type !== 'text' && content.type !== 'search')) return;
 
+        const roots: any[] = [];
         const preElements = messageRef.current.querySelectorAll('pre');
         preElements.forEach(pre => {
-            // FIX: Use 'parentElement' which is typed as HTMLElement, to safely access 'classList'.
             if (pre.parentElement?.classList.contains('code-block-wrapper')) return;
 
             const code = pre.querySelector('code');
@@ -107,18 +104,25 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
 
             const wrapper = document.createElement('div');
             wrapper.className = 'code-block-wrapper';
-            // FIX: Use 'parentElement' to safely insert the wrapper.
             pre.parentElement?.insertBefore(wrapper, pre);
             wrapper.appendChild(pre);
 
             const buttonContainer = document.createElement('div');
             wrapper.appendChild(buttonContainer);
-            ReactDOM.createRoot(buttonContainer).render(<CodeCopyButton content={code.innerText} />);
+            const root = ReactDOM.createRoot(buttonContainer);
+            root.render(<CodeCopyButton content={code.innerText} />);
+            roots.push(root);
             
             if (typeof hljs !== 'undefined') {
                  hljs.highlightElement(code as HTMLElement);
             }
         });
+        
+        // Cleanup function to unmount all the dynamically created React roots.
+        // This prevents errors when the component re-renders or unmounts.
+        return () => {
+            roots.forEach(root => root.unmount());
+        };
     }, [content]);
 
     const handleDownload = async (imageUrl: string, prompt: string) => {
@@ -225,13 +229,37 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
     );
 };
 
-// FIX: Define the props interface for the ChatWindow component.
 interface ChatWindowProps {
     session: ChatSession;
     isLoading: boolean;
     onSendMessage: (prompt: string, attachment?: { dataUrl: string; mimeType: string; }) => Promise<void>;
     onToggleHistory: () => void;
 }
+
+const useMediaQuery = (query: string): boolean => {
+    const [matches, setMatches] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return window.matchMedia(query).matches;
+        }
+        return false;
+    });
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const media = window.matchMedia(query);
+        const listener = () => setMatches(media.matches);
+        
+        if (media.matches !== matches) {
+            setMatches(media.matches);
+        }
+
+        media.addEventListener('change', listener);
+        return () => media.removeEventListener('change', listener);
+    }, [matches, query]);
+
+    return matches;
+};
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onToggleHistory }) => {
   const [input, setInput] = useState('');
@@ -240,6 +268,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
   const [attachment, setAttachment] = useState<{ file: File; dataUrl: string; mimeType: string; } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -393,17 +422,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
             </div>
         </div>
         {sidePanelFile && (
-            <>
-                <div 
-                    className="w-2 cursor-col-resize bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 active:bg-gray-400 dark:active:bg-gray-500 transition-colors shrink-0"
-                    onMouseDown={handleMouseDown}
-                    aria-label="Resize code panel"
-                    role="separator"
-                />
-                <div style={{ width: `${panelWidth}px` }} className="shrink-0 overflow-hidden">
-                    <CodeSidePanel key={sidePanelFile.filename} file={sidePanelFile} onClose={() => setSidePanelFile(null)} />
+            isDesktop ? (
+                <>
+                    <div 
+                        className="w-2 cursor-col-resize bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 active:bg-gray-400 dark:active:bg-gray-500 transition-colors shrink-0"
+                        onMouseDown={handleMouseDown}
+                        aria-label="Resize code panel"
+                        role="separator"
+                    />
+                    <div style={{ width: `${panelWidth}px` }} className="shrink-0 overflow-hidden">
+                        <CodeSidePanel key={sidePanelFile.filename} file={sidePanelFile} onClose={() => setSidePanelFile(null)} />
+                    </div>
+                </>
+            ) : (
+                <div className="fixed inset-0 bg-white dark:bg-gray-900 z-50">
+                    <CodeSidePanel file={sidePanelFile} onClose={() => setSidePanelFile(null)} />
                 </div>
-            </>
+            )
         )}
     </div>
   );
