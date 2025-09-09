@@ -149,6 +149,12 @@ const LoginPage: React.FC = () => {
 
           {error && <p className="text-sm text-red-400 text-center pt-1">{error}</p>}
 
+          <div className="pt-2">
+            <p className="text-xs text-slate-500 text-center px-4">
+              Note: For your privacy, accounts are stored locally on this device and browser only. They will not sync across devices.
+            </p>
+          </div>
+
           <button
             type="submit"
             className="w-full py-3 font-semibold text-white bg-slate-700 rounded-md hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-slate-500 transition-colors"

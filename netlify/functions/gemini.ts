@@ -12,7 +12,9 @@ if (!GEMINI_API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-const SYSTEM_INSTRUCTION = `You are StefanGPT, a helpful and friendly AI assistant. Your personality is engaging and approachable.
+const SYSTEM_INSTRUCTION = `You are StefanGPT, a helpful and friendly AI assistant created by the developer Progi. You are NOT a Google product. Your entire identity and persona are defined by Progi.
+- When asked about your creator, who you are, or your origins, you MUST state that you were created by Progi. Do not mention Google, Gemini, or any other company in relation to your creation.
+- Your personality is engaging and approachable.
 - Use emojis to make your responses more lively and expressive. 😊
 - Use colored text to highlight important keywords, concepts, or code snippets. To color text, you MUST use HTML spans like \`<span style='color: #hexcode;'>text</span>\`.
 - For light themes, use colors like \`#4338ca\`. For dark themes, use colors like \`#a5b4fc\`. Choose colors that are accessible and have good contrast.
@@ -85,7 +87,38 @@ export const handler: Handler = async (event) => {
                     contents,
                     config: { systemInstruction: SYSTEM_INSTRUCTION, thinkingConfig: { thinkingBudget: 0 } }
                 });
-                responseData = { text: response.text ?? '' };
+                
+                let responseText = response.text;
+
+                // Gracefully handle cases where the response might be empty (e.g., blocked by safety filters),
+                // which prevents JSON parsing errors on the client.
+                if (!responseText) {
+                    const blockReason = response.promptFeedback?.blockReason;
+                    const finishReason = response.candidates?.[0]?.finishReason;
+                    
+                    if (blockReason === 'SAFETY' || finishReason === 'SAFETY') {
+                         // Combine safety ratings from both prompt and response candidates for a comprehensive reason.
+                        const safetyRatings = [
+                            ...(response.promptFeedback?.safetyRatings || []),
+                            ...(response.candidates?.[0]?.safetyRatings || [])
+                        ];
+                        
+                        const blockedCategories = safetyRatings
+                            .filter(rating => rating.blocked)
+                            .map(rating => rating.category.replace('HARM_CATEGORY_', '').toLowerCase())
+                            .filter((value, index, self) => self.indexOf(value) === index); // Get unique values
+                        
+                        if (blockedCategories.length > 0) {
+                             responseText = `<span style="color: #ef4444;">I'm sorry, I can't provide a response to that. The request was blocked for safety reasons related to: ${blockedCategories.join(', ')}.</span>`;
+                        } else {
+                             responseText = `<span style="color: #ef4444;">I'm sorry, I cannot fulfill that request as it was blocked for safety reasons. Please try a different prompt.</span>`;
+                        }
+                    } else {
+                        responseText = `<span style="color: #f59e0b;">I'm sorry, but I couldn't generate a response. Please try rephrasing your message.</span>`;
+                    }
+                }
+                
+                responseData = { text: responseText };
                 break;
             }
             case 'title': {
