@@ -85,7 +85,7 @@ export const handler: Handler = async (event) => {
                     contents,
                     config: { systemInstruction: SYSTEM_INSTRUCTION, thinkingConfig: { thinkingBudget: 0 } }
                 });
-                responseData = { text: response.text };
+                responseData = { text: response.text ?? '' };
                 break;
             }
             case 'title': {
@@ -95,7 +95,7 @@ export const handler: Handler = async (event) => {
                     contents,
                     config: { thinkingConfig: { thinkingBudget: 0 } }
                 });
-                const title = response.text.replace(/"/g, '').replace(/\.$/, '').trim();
+                const title = (response.text ?? '').replace(/"/g, '').replace(/\.$/, '').trim();
                 responseData = { title };
                 break;
             }
@@ -105,7 +105,7 @@ export const handler: Handler = async (event) => {
                     contents: payload.prompt,
                     config: { tools: [{ googleSearch: {} }] },
                 });
-                const text = response.text;
+                const text = response.text ?? '';
                 const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
                 const citations = groundingChunks
                     .map((chunk: any) => chunk.web)
