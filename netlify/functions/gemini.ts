@@ -1,6 +1,8 @@
 import { Handler } from '@netlify/functions';
 import { GoogleGenAI, Content, Part } from '@google/genai';
-import { Message, MessageSender, UserQueryContent, SearchResultContent } from '../../src/types';
+// FIX: Corrected import path to resolve module from project root during Netlify build.
+// FIX: Import `MessageSender` as a value because it is an enum used at runtime, while other symbols are interfaces used only as types.
+import { MessageSender, type Message, type UserQueryContent, type SearchResultContent } from '../../types';
 
 const GEMINI_API_KEY = process.env.API_KEY;
 
