@@ -81,6 +81,9 @@ export const handler: Handler = async (event) => {
 
         switch (type) {
             case 'chat': {
+                if (!payload || !Array.isArray(payload.messages)) {
+                    return { statusCode: 400, body: JSON.stringify({ error: 'Bad request: messages array is required.' }) };
+                }
                 const contents = formatMessageHistory(payload.messages);
                 const response = await ai.models.generateContent({
                     model,
@@ -90,23 +93,19 @@ export const handler: Handler = async (event) => {
                 
                 let responseText = response.text;
 
-                // Gracefully handle cases where the response might be empty (e.g., blocked by safety filters),
-                // which prevents JSON parsing errors on the client.
                 if (!responseText) {
                     const blockReason = response.promptFeedback?.blockReason;
                     const finishReason = response.candidates?.[0]?.finishReason;
                     
                     if (blockReason === 'SAFETY' || finishReason === 'SAFETY') {
-                         // Combine safety ratings from both prompt and response candidates for a comprehensive reason.
                         const safetyRatings = [
                             ...(response.promptFeedback?.safetyRatings || []),
                             ...(response.candidates?.[0]?.safetyRatings || [])
                         ];
-                        
                         const blockedCategories = safetyRatings
                             .filter(rating => rating.blocked)
                             .map(rating => rating.category.replace('HARM_CATEGORY_', '').toLowerCase())
-                            .filter((value, index, self) => self.indexOf(value) === index); // Get unique values
+                            .filter((value, index, self) => self.indexOf(value) === index);
                         
                         if (blockedCategories.length > 0) {
                              responseText = `<span style="color: #ef4444;">I'm sorry, I can't provide a response to that. The request was blocked for safety reasons related to: ${blockedCategories.join(', ')}.</span>`;
@@ -118,10 +117,13 @@ export const handler: Handler = async (event) => {
                     }
                 }
                 
-                responseData = { text: responseText };
+                responseData = { text: responseText ?? "I'm sorry, an unexpected error occurred while generating a response." };
                 break;
             }
             case 'title': {
+                 if (!payload || !payload.prompt) {
+                     return { statusCode: 400, body: JSON.stringify({ error: 'Bad request: prompt is required.' }) };
+                }
                 const contents = `Generate a very short, concise title (max 5 words) for a chat that starts with this user prompt: "${payload.prompt}"`;
                 const response = await ai.models.generateContent({
                     model,
@@ -133,6 +135,9 @@ export const handler: Handler = async (event) => {
                 break;
             }
             case 'search': {
+                if (!payload || !payload.prompt) {
+                     return { statusCode: 400, body: JSON.stringify({ error: 'Bad request: prompt is required.' }) };
+                }
                 const response = await ai.models.generateContent({
                     model,
                     contents: payload.prompt,
