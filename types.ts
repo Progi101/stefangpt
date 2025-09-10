@@ -41,7 +41,7 @@ export interface FilesContent {
 export interface UserQueryContent {
   type: 'user-query';
   text: string;
-  imageUrl: string; // The data URL of the uploaded image
+  imageUrls: string[]; // The data URLs of the uploaded images
 }
 
 export type MessageContent = TextContent | ImageContent | SearchResultContent | FilesContent | UserQueryContent;

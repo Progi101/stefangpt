@@ -1,8 +1,8 @@
 // FIX: Corrected typo in React hooks import statement.
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ChatSession, Message, MessageSender, MessageContent, CodeFile, FilesContent, UserQueryContent } from '../../types';
-import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon, PaperclipIcon } from '../common/Icon';
+import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon, PaperclipIcon, StopIcon } from '../common/Icon';
 
 declare const marked: any;
 declare const hljs: any;
@@ -160,8 +160,19 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
             switch (content.type) {
                 case 'user-query':
                     return (
-                        <div className="space-y-2">
-                            <img src={content.imageUrl} alt="User upload" className="rounded-lg max-w-xs" />
+                        <div className="space-y-3">
+                            {content.imageUrls.length > 0 && (
+                                <div className={`grid gap-2 grid-cols-1 ${content.imageUrls.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                                    {content.imageUrls.map((url, index) => (
+                                        <img 
+                                            key={index} 
+                                            src={url} 
+                                            alt={`User upload ${index + 1}`} 
+                                            className="rounded-lg w-full h-auto object-cover max-w-full"
+                                        />
+                                    ))}
+                                </div>
+                            )}
                             {content.text && <div className="markdown-content text-base" dangerouslySetInnerHTML={{ __html: content.text.replace(/\n/g, '<br/>') }}></div>}
                         </div>
                     );
@@ -233,7 +244,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
 interface ChatWindowProps {
     session: ChatSession;
     isLoading: boolean;
-    onSendMessage: (prompt: string, attachment?: { dataUrl: string; mimeType: string; }) => Promise<void>;
+    onSendMessage: (prompt: string, attachments?: { dataUrl: string; mimeType: string; }[]) => Promise<void>;
+    onCancelGeneration: () => void;
     onToggleHistory: () => void;
 }
 
@@ -262,22 +274,37 @@ const useMediaQuery = (query: string): boolean => {
     return matches;
 };
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onToggleHistory }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onCancelGeneration, onToggleHistory }) => {
   const [input, setInput] = useState('');
   const [sidePanelFile, setSidePanelFile] = useState<CodeFile | null>(null);
   const [panelWidth, setPanelWidth] = useState(450);
-  const [attachment, setAttachment] = useState<{ file: File; dataUrl: string; mimeType: string; } | null>(null);
+  const [attachments, setAttachments] = useState<{ file: File; dataUrl: string; mimeType: string; }[]>([]);
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const prevIsLoadingRef = useRef<boolean>(isLoading);
+  
+  const MAX_TOTAL_SIZE_MB = 5.5;
+  const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_MB * 1024 * 1024;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    scrollToBottom();
+    const lastMessage = session.messages[session.messages.length - 1];
+    const wasLoading = prevIsLoadingRef.current;
+    
+    // Scroll down when user sends a message or when loading starts for the first time.
+    // This prevents scrolling when the AI response arrives.
+    if (lastMessage?.sender === MessageSender.USER || (isLoading && !wasLoading)) {
+        scrollToBottom();
+    }
+    
+    prevIsLoadingRef.current = isLoading;
   }, [session.messages, isLoading]);
+
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -299,29 +326,54 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
   };
   
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setAttachment({
+    setUploadError('');
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const currentSize = attachments.reduce((sum, att) => sum + att.file.size, 0);
+      const newFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+      const newSize = newFiles.reduce((sum, file) => sum + file.size, 0);
+
+      if (currentSize + newSize > MAX_TOTAL_SIZE_BYTES) {
+        setUploadError(`Total file size cannot exceed ${MAX_TOTAL_SIZE_MB}MB.`);
+        if (e.target) e.target.value = '';
+        return;
+      }
+      
+      const filePromises = newFiles.map(file => {
+          return new Promise<{ file: File; dataUrl: string; mimeType: string; }>(resolve => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve({
                 file,
                 dataUrl: reader.result as string,
                 mimeType: file.type,
-            });
-        };
-        reader.readAsDataURL(file);
+              });
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+
+      Promise.all(filePromises).then(newAttachments => {
+        setAttachments(prev => [...prev, ...newAttachments]);
+      });
     }
     if (e.target) e.target.value = '';
   };
   
+  const handleRemoveAttachment = (index: number) => {
+    setUploadError('');
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleLocalSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmedInput = input.trim();
-    if ((!trimmedInput && !attachment) || isLoading) return;
+    if ((!trimmedInput && attachments.length === 0) || isLoading) return;
 
     setInput('');
-    setAttachment(null);
-    await onSendMessage(trimmedInput, attachment || undefined);
+    setAttachments([]);
+    setUploadError('');
+    await onSendMessage(trimmedInput, attachments);
   };
 
   const renderMessageNode = (message: Message) => {
@@ -370,18 +422,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
                 <div className="max-w-4xl mx-auto">
-                    {attachment && (
-                        <div className="mb-2 p-2 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-start justify-between">
-                            <div className="flex items-start gap-2 overflow-hidden">
-                                <img src={attachment.dataUrl} className="w-16 h-16 object-cover rounded-md flex-shrink-0" alt="Attachment preview"/>
-                                <div className="overflow-hidden">
-                                    <p className="text-sm font-medium truncate">{attachment.file.name}</p>
-                                    <p className="text-xs text-gray-500">{Math.round(attachment.file.size / 1024)} KB</p>
-                                </div>
+                    {uploadError && <p className="text-sm text-red-500 mb-2 text-center">{uploadError}</p>}
+                    {attachments.length > 0 && (
+                        <div className="mb-2 p-2 bg-gray-100 dark:bg-gray-900 rounded-lg">
+                            <div className="flex space-x-2 overflow-x-auto">
+                                {attachments.map((att, index) => (
+                                    <div key={index} className="relative flex-shrink-0">
+                                        <img src={att.dataUrl} className="w-20 h-20 object-cover rounded-md" alt="Attachment preview"/>
+                                        <button 
+                                            onClick={() => handleRemoveAttachment(index)} 
+                                            className="absolute -top-1 -right-1 p-0.5 bg-gray-800 text-white rounded-full"
+                                            aria-label="Remove attachment"
+                                        >
+                                            <Icon icon={XIcon} className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
-                            <button onClick={() => setAttachment(null)} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0">
-                                <Icon icon={XIcon} className="w-5 h-5" />
-                            </button>
                         </div>
                     )}
                     <form onSubmit={handleLocalSendMessage} className="relative">
@@ -390,6 +447,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
                             ref={fileInputRef} 
                             onChange={handleAttachmentChange}
                             accept="image/*"
+                            multiple
                             className="hidden"
                         />
                          <button 
@@ -415,9 +473,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
                         className="w-full px-12 py-3 pr-12 text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 resize-none"
                         disabled={isLoading}
                         />
-                        <button type="submit" disabled={isLoading || (!input.trim() && !attachment)} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gray-700 text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed hover:bg-gray-900 transition-colors">
-                        <Icon icon={SendIcon} className="w-5 h-5" />
-                        </button>
+                        {isLoading ? (
+                            <button type="button" onClick={onCancelGeneration} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors" aria-label="Stop generation">
+                                <Icon icon={StopIcon} className="w-5 h-5" />
+                            </button>
+                        ) : (
+                            <button type="submit" disabled={!input.trim() && attachments.length === 0} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gray-700 text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed hover:bg-gray-900 transition-colors" aria-label="Send message">
+                                <Icon icon={SendIcon} className="w-5 h-5" />
+                            </button>
+                        )}
                     </form>
                 </div>
             </div>

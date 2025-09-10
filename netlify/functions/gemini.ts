@@ -34,8 +34,13 @@ Here are the files for your project:
 This setup creates a basic webpage.`;
 
 // Helper to convert data URL to a Gemini API Part
-const fileToPart = (dataUrl: string): Part => {
-  const [header, data] = dataUrl.split(',');
+const fileToPart = (dataUrl: string): Part | null => {
+  const parts = dataUrl.split(',');
+  if (parts.length !== 2) {
+    console.error("Malformed data URL received, skipping part.");
+    return null;
+  }
+  const [header, data] = parts;
   const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
   return { inlineData: { mimeType, data } };
 };
@@ -54,7 +59,12 @@ const formatMessageHistory = (messages: Message[]): Content[] => {
             parts.push({ text: message.content.text });
         } else if (message.content.type === 'user-query') {
             const userQuery = message.content as UserQueryContent;
-            if (userQuery.imageUrl) parts.push(fileToPart(userQuery.imageUrl));
+            if (userQuery.imageUrls) {
+                userQuery.imageUrls.forEach(url => {
+                    const part = fileToPart(url);
+                    if (part) parts.push(part);
+                });
+            }
             if (userQuery.text) parts.push({ text: userQuery.text });
         } else if (message.content.type === 'files') {
              parts.push({ text: 'Provided a set of project files.' });

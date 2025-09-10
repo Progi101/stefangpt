@@ -1,6 +1,8 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import HistoryPanel from './HistoryPanel';
 import ChatWindow from '../chat/ChatWindow';
 import LibraryView from '../library/LibraryView';
@@ -53,6 +55,7 @@ const MainLayout: React.FC = () => {
     return false;
   });
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const abortControllerRef = useRef<AbortController | null>(null);
 
 
   const handleNewChat = useCallback(() => {
@@ -151,16 +154,23 @@ const MainLayout: React.FC = () => {
         setIsHistoryPanelOpen(false);
       }
   };
+  
+  const handleCancelGeneration = () => {
+    if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+        setIsLoading(false);
+    }
+  };
 
-  const handleSendMessage = async (prompt: string, attachment?: { dataUrl: string; mimeType: string }) => {
+  const handleSendMessage = async (prompt: string, attachments?: { dataUrl: string; mimeType: string }[]) => {
     if (!activeSessionId) return;
 
     const activeSession = sessions.find(s => s.id === activeSessionId);
     if (!activeSession) return;
     
-    // Create the user message
-    const userMessageContent: MessageContent = attachment
-      ? { type: 'user-query', text: prompt, imageUrl: attachment.dataUrl }
+    const userMessageContent: MessageContent = (attachments && attachments.length > 0)
+      ? { type: 'user-query', text: prompt, imageUrls: attachments.map(a => a.dataUrl) }
       : { type: 'text', text: prompt };
 
     const userMessage: Message = {
@@ -169,7 +179,6 @@ const MainLayout: React.FC = () => {
       content: userMessageContent,
     };
 
-    // Update UI immediately with user's message
     const sessionWithUserMessage = {
       ...activeSession,
       messages: [...activeSession.messages, userMessage],
@@ -177,12 +186,15 @@ const MainLayout: React.FC = () => {
     handleSessionUpdate(sessionWithUserMessage);
     setIsLoading(true);
     
+    // Create and store the AbortController for this specific request
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
+    
     try {
         let aiMessages: Message[] = [];
         let commandMatched = false;
 
-        // Command processing should only happen for text-only prompts
-        if (!attachment) {
+        if (!attachments || attachments.length === 0) {
             const lowercasedInput = prompt.toLowerCase().trim();
             const searchPrefixes = ['search', 'find', 'lookup', 'google'];
             const imagePrefixes = ['generate', 'create', 'draw', 'image of', 'picture of', 'icon of', 'logo of'];
@@ -190,7 +202,7 @@ const MainLayout: React.FC = () => {
             for (const prefix of searchPrefixes) {
                 if (lowercasedInput.startsWith(prefix + ' ')) {
                     const searchPrompt = prompt.substring(prefix.length + 1).trim();
-                    const searchContent = await performWebSearch(searchPrompt);
+                    const searchContent = await performWebSearch(searchPrompt, signal);
                     aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: searchContent });
                     commandMatched = true;
                     break;
@@ -200,7 +212,7 @@ const MainLayout: React.FC = () => {
                 for (const prefix of imagePrefixes) {
                     if (lowercasedInput.startsWith(prefix + ' ')) {
                         const imagePrompt = prompt.substring(prefix.length + 1).trim();
-                        const imageUrl = await generateImage(imagePrompt);
+                        const imageUrl = await generateImage(imagePrompt, signal);
                         aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'image', imageUrl, prompt: imagePrompt } });
                         commandMatched = true;
                         break;
@@ -209,53 +221,42 @@ const MainLayout: React.FC = () => {
             }
         }
         
-        // If no command was matched, proceed with a general chat response
         if (!commandMatched) {
-            const responseText = await generateChatResponse(sessionWithUserMessage.messages);
-            const fileBlockRegex = /```json-files\s*([\s\S]*?)\s*```/s; // Use 's' flag for dotAll
+            const responseText = await generateChatResponse(sessionWithUserMessage.messages, signal);
+            const fileBlockRegex = /```json-files\s*([\s\S]*?)\s*```/s;
             const match = responseText.match(fileBlockRegex);
 
             if (match && match[1]) {
                 try {
-                    // Extract explanation text that is outside the json block
                     const explanationText = responseText.replace(fileBlockRegex, '').trim();
-
                     const filesJson = JSON.parse(match[1]);
-                    // Basic validation of the parsed JSON
                     if (Array.isArray(filesJson) && filesJson.length > 0 && filesJson.every(f => 'filename' in f && 'content' in f)) {
-                        // Add files content first
                         aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'files', files: filesJson } });
-                        
-                        // If there's accompanying text, add it as a separate message
                         if (explanationText) {
                              aiMessages.push({ id: (Date.now() + 2).toString(), sender: MessageSender.AI, content: { type: 'text', text: explanationText } });
                         }
                     } else {
-                         // The JSON is malformed, treat the whole thing as text
                          aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'text', text: responseText } });
                     }
                 } catch (e) {
-                     // JSON parsing failed, treat the whole response as a single text message
                      aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'text', text: responseText } });
                 }
             } else {
-                 // No file block found, just a regular text response
                  aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'text', text: responseText } });
             }
         }
         
-        // Update session with AI response(s) immediately
         const sessionAfterAI = {
             ...sessionWithUserMessage,
             messages: [...sessionWithUserMessage.messages, ...aiMessages],
         };
         handleSessionUpdate(sessionAfterAI);
 
-        // Generate title for new chats asynchronously
         if (sessionWithUserMessage.messages.length <= 2 && sessionWithUserMessage.title === 'New Chat') {
             (async () => {
+                const titleAbortController = new AbortController();
                 try {
-                    const newTitle = await generateTitleForChat(prompt);
+                    const newTitle = await generateTitleForChat(prompt, titleAbortController.signal);
                     setSessions(currentSessions => {
                         const sessionIndex = currentSessions.findIndex(s => s.id === activeSessionId);
                         if (sessionIndex > -1) {
@@ -267,12 +268,21 @@ const MainLayout: React.FC = () => {
                         return currentSessions;
                     });
                 } catch (error) {
-                    console.error("Title generation failed:", error);
+                    if ((error as Error).name !== 'AbortError') {
+                       console.error("Title generation failed:", error);
+                    }
                 }
             })();
         }
 
     } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            console.log("Request was cancelled by the user.");
+            // Don't show an error message in the chat for user-initiated cancellations.
+            // The loading state is already handled by the cancel handler and finally block.
+            return;
+        }
+
         console.error("Error processing AI response:", error);
         const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred. Please try again.";
         const errorMessage: Message = {
@@ -284,6 +294,7 @@ const MainLayout: React.FC = () => {
         handleSessionUpdate(sessionWithError);
     } finally {
         setIsLoading(false);
+        abortControllerRef.current = null;
     }
   };
   
@@ -320,6 +331,7 @@ const MainLayout: React.FC = () => {
             session={activeSession} 
             isLoading={isLoading}
             onSendMessage={handleSendMessage}
+            onCancelGeneration={handleCancelGeneration}
             onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
           />
         ) : view === 'library' ? (
