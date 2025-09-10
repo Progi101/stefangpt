@@ -1,5 +1,5 @@
 // FIX: Corrected typo in React hooks import statement.
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ChatSession, Message, MessageSender, MessageContent, CodeFile, FilesContent, UserQueryContent } from '../../types';
 import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon, PaperclipIcon, StopIcon } from '../common/Icon';
@@ -241,6 +241,57 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
     );
 };
 
+const resizeImage = (file: File): Promise<{ dataUrl: string; mimeType: string; }> => {
+    const MAX_DIMENSION = 1024; // Resize images to be max 1024px on their largest side
+    const QUALITY = 0.9; // Use 90% JPEG quality for smaller file size
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            if (!event.target?.result) {
+                return reject(new Error("FileReader did not return a result."));
+            }
+            const img = new Image();
+            img.src = event.target.result as string;
+            img.onload = () => {
+                const { width, height } = img;
+
+                // If the image is already small enough, no need to resize.
+                if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
+                    return resolve({ dataUrl: img.src, mimeType: file.type });
+                }
+
+                let newWidth, newHeight;
+                if (width > height) {
+                    newWidth = MAX_DIMENSION;
+                    newHeight = Math.round((height * MAX_DIMENSION) / width);
+                } else {
+                    newHeight = MAX_DIMENSION;
+                    newWidth = Math.round((width * MAX_DIMENSION) / height);
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    return reject(new Error('Could not get 2D canvas context'));
+                }
+                ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+                // Forcing JPEG often results in a smaller file size than PNG for photos.
+                const mimeType = 'image/jpeg';
+                const dataUrl = canvas.toDataURL(mimeType, QUALITY);
+
+                resolve({ dataUrl, mimeType });
+            };
+            img.onerror = (err) => reject(new Error(`Image loading failed.`));
+        };
+        reader.onerror = (err) => reject(new Error(`FileReader failed.`));
+    });
+};
+
 interface ChatWindowProps {
     session: ChatSession;
     isLoading: boolean;
@@ -325,7 +376,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
     document.addEventListener('mouseup', handleMouseUp);
   };
   
-  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError('');
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -339,23 +390,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
         return;
       }
       
-      const filePromises = newFiles.map(file => {
-          return new Promise<{ file: File; dataUrl: string; mimeType: string; }>(resolve => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              resolve({
-                file,
-                dataUrl: reader.result as string,
-                mimeType: file.type,
-              });
-            };
-            reader.readAsDataURL(file);
-          });
+      try {
+        const newAttachmentsPromises = newFiles.map(async file => {
+          const { dataUrl, mimeType } = await resizeImage(file);
+          return { file, dataUrl, mimeType };
         });
 
-      Promise.all(filePromises).then(newAttachments => {
+        const newAttachments = await Promise.all(newAttachmentsPromises);
         setAttachments(prev => [...prev, ...newAttachments]);
-      });
+      } catch (error) {
+          console.error("Error processing image:", error);
+          setUploadError(error instanceof Error ? error.message : "There was an error processing an image file.");
+      }
     }
     if (e.target) e.target.value = '';
   };
