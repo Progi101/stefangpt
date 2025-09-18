@@ -1,5 +1,7 @@
 {
   "name": "StefanGPT",
   "description": "A multifaceted AI assistant with conversational intelligence, realistic image generation, and web search capabilities, all within a personalized and secure user experience.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

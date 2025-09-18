@@ -62,18 +62,6 @@ const AboutPage: React.FC<AboutPageProps> = ({ onToggleHistory }) => {
                         </FeatureCard>
                     </div>
                 </section>
-
-                <div className="border-t border-gray-200 dark:border-gray-700"></div>
-                
-                <section id="technology">
-                     <h2 className="text-4xl font-bold mb-6 text-center">The Technology Powering Your Assistant</h2>
-                     <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg text-gray-700 dark:text-gray-300 space-y-4 leading-loose">
-                        <p>StefanGPT stands on the shoulders of giants, integrating cutting-edge technologies to deliver a seamless and powerful user experience. The application is crafted as a modern single-page application (SPA) using <strong>React</strong>, a leading JavaScript library for building dynamic user interfaces. This ensures the app is fast, responsive, and works flawlessly across all your devices.</p>
-                        <p>The core conversational and generative abilities are powered by the <strong>Google Gemini API</strong>. For chat, we use the 'gemini-2.5-flash' model, which offers a state-of-the-art balance of speed and intelligence. The application communicates with this service via secure Netlify Functions, ensuring your API key is never exposed to the browser.</p>
-                        <p>For image generation, we leverage the power of <strong>Stable Diffusion XL</strong>, a state-of-the-art open-source model. To make this freely available, the app uses the <strong>Hugging Face Inference API</strong>. When you ask for an image, the request is sent to a secure Netlify Function which communicates with the API, generates the image, and returns it to you. The generated image is then saved to your private, local library.</p>
-                        <p>Finally, our commitment to privacy is cemented by our use of the browser's <strong>localStorage</strong>. By storing all user data—from account credentials to entire chat histories—directly on your device, we give you sovereign control. This decentralized approach is fundamental to our design and guarantees that your interactions with StefanGPT remain confidential.</p>
-                     </div>
-                </section>
                 
                  <div className="border-t border-gray-200 dark:border-gray-700"></div>
 

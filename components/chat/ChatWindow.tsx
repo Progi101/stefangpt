@@ -1,8 +1,8 @@
 // FIX: Corrected typo in React hooks import statement.
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import { ChatSession, Message, MessageSender, MessageContent, CodeFile, FilesContent, UserQueryContent } from '../../types';
-import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon, PaperclipIcon, StopIcon } from '../common/Icon';
+import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon } from '../common/Icon';
 
 declare const marked: any;
 declare const hljs: any;
@@ -325,13 +325,152 @@ const useMediaQuery = (query: string): boolean => {
     return matches;
 };
 
+const CameraView: React.FC<{ onCapture: (file: File) => void; onClose: () => void; }> = ({ onCapture, onClose }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [stream, setStream] = useState<MediaStream | null>(null);
+    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let activeStream: MediaStream | null = null;
+        const openCamera = async () => {
+            try {
+                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                activeStream = mediaStream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = mediaStream;
+                }
+                setStream(mediaStream);
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                setError("Could not access the camera. Please ensure you have granted permission.");
+            }
+        };
+
+        openCamera();
+
+        return () => {
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, []);
+
+    const dataURLtoFile = (dataurl: string, filename: string): File => {
+        const arr = dataurl.split(',');
+        const mimeMatch = arr[0].match(/:(.*?);/);
+        if (!mimeMatch) throw new Error("Invalid data URL format");
+        const mime = mimeMatch[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, { type: mime });
+    };
+
+    const handleCapture = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current;
+            const canvas = canvasRef.current;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            if (context) {
+                context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                setCapturedImage(dataUrl);
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop()); // Stop the stream to freeze frame
+                }
+            }
+        }
+    };
+
+    const handleRetake = () => {
+        setCapturedImage(null);
+        setError(null);
+        const openCamera = async () => {
+            try {
+                const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = mediaStream;
+                }
+                setStream(mediaStream);
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                setError("Could not re-access the camera.");
+            }
+        };
+        openCamera();
+    };
+
+    const handleUsePhoto = () => {
+        if (capturedImage) {
+            try {
+                const file = dataURLtoFile(capturedImage, `capture-${Date.now()}.jpg`);
+                onCapture(file);
+            } catch(e) {
+                console.error("Failed to convert data URL to file", e);
+                setError("There was an error processing the captured image.")
+            }
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 text-white">
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30" aria-label="Close camera">
+                <Icon icon={XIcon} className="w-6 h-6" />
+            </button>
+
+            <div className="relative w-full max-w-2xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
+                {error ? (
+                    <div className="flex items-center justify-center h-full text-red-400 p-4 text-center">{error}</div>
+                ) : (
+                    <>
+                        <video 
+                            ref={videoRef} 
+                            autoPlay 
+                            playsInline 
+                            className={`w-full h-full object-cover ${capturedImage ? 'hidden' : ''}`}
+                        />
+                        {capturedImage && (
+                            <img src={capturedImage} alt="Captured preview" className="w-full h-full object-cover" />
+                        )}
+                        <canvas ref={canvasRef} className="hidden" />
+                    </>
+                )}
+            </div>
+
+            <div className="mt-6 flex items-center justify-center space-x-6 h-20">
+                {!error && (
+                    capturedImage ? (
+                        <>
+                            <button onClick={handleRetake} className="px-6 py-3 rounded-lg bg-gray-600 hover:bg-gray-500 font-semibold transition-colors">Retake</button>
+                            <button onClick={handleUsePhoto} className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 font-semibold transition-colors">Use Photo</button>
+                        </>
+                    ) : (
+                        <button onClick={handleCapture} className="w-20 h-20 rounded-full bg-white border-4 border-gray-400 ring-4 ring-white/30 hover:bg-gray-200 transition" aria-label="Capture photo" />
+                    )
+                )}
+            </div>
+        </div>
+    );
+};
+
 const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onCancelGeneration, onToggleHistory }) => {
   const [input, setInput] = useState('');
   const [sidePanelFile, setSidePanelFile] = useState<CodeFile | null>(null);
   const [panelWidth, setPanelWidth] = useState(450);
   const [attachments, setAttachments] = useState<{ file: File; dataUrl: string; mimeType: string; }[]>([]);
   const [uploadError, setUploadError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const prevIsLoadingRef = useRef<boolean>(isLoading);
@@ -347,8 +486,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
     const lastMessage = session.messages[session.messages.length - 1];
     const wasLoading = prevIsLoadingRef.current;
     
-    // Scroll down when user sends a message or when loading starts for the first time.
-    // This prevents scrolling when the AI response arrives.
     if (lastMessage?.sender === MessageSender.USER || (isLoading && !wasLoading)) {
         scrollToBottom();
     }
@@ -356,6 +493,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
     prevIsLoadingRef.current = isLoading;
   }, [session.messages, isLoading]);
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+        textarea.style.height = 'auto';
+        const scrollHeight = textarea.scrollHeight;
+        const maxHeight = 128; // 8rem
+        if (scrollHeight > maxHeight) {
+            textarea.style.height = `${maxHeight}px`;
+            textarea.style.overflowY = 'auto';
+        } else {
+            textarea.style.height = `${scrollHeight}px`;
+            textarea.style.overflowY = 'hidden';
+        }
+    }
+  }, [input]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -376,32 +528,59 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
     document.addEventListener('mouseup', handleMouseUp);
   };
   
-  const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadError('');
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const currentSize = attachments.reduce((sum, att) => sum + att.file.size, 0);
-      const newFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
-      const newSize = newFiles.reduce((sum, file) => sum + file.size, 0);
+  const handleFiles = useCallback(async (files: File[]) => {
+      setUploadError(''); // Clear previous errors
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+      const nonImageFilesCount = files.length - imageFiles.length;
 
-      if (currentSize + newSize > MAX_TOTAL_SIZE_BYTES) {
-        setUploadError(`Total file size cannot exceed ${MAX_TOTAL_SIZE_MB}MB.`);
-        if (e.target) e.target.value = '';
-        return;
+      if (imageFiles.length === 0) {
+          if (nonImageFilesCount > 0) {
+              setUploadError('Only image files are supported. Please select images to upload.');
+          }
+          return; // Nothing to do if no valid files
       }
       
-      try {
-        const newAttachmentsPromises = newFiles.map(async file => {
-          const { dataUrl, mimeType } = await resizeImage(file);
-          return { file, dataUrl, mimeType };
-        });
+      const currentSize = attachments.reduce((sum, att) => sum + att.file.size, 0);
+      const newSize = imageFiles.reduce((sum, file) => sum + file.size, 0);
 
-        const newAttachments = await Promise.all(newAttachmentsPromises);
-        setAttachments(prev => [...prev, ...newAttachments]);
+      if (currentSize + newSize > MAX_TOTAL_SIZE_BYTES) {
+          setUploadError(`Total file size cannot exceed ${MAX_TOTAL_SIZE_MB}MB.`);
+          return;
+      }
+
+      try {
+          const newAttachmentsPromises = imageFiles.map(async file => {
+              const { dataUrl, mimeType } = await resizeImage(file);
+              return { file, dataUrl, mimeType };
+          });
+          const newAttachments = await Promise.all(newAttachmentsPromises);
+          setAttachments(prev => [...prev, ...newAttachments]);
+
+          if (nonImageFilesCount > 0) {
+              setUploadError(`Only image files are supported. ${nonImageFilesCount} file(s) were ignored.`);
+          }
+
       } catch (error) {
           console.error("Error processing image:", error);
           setUploadError(error instanceof Error ? error.message : "There was an error processing an image file.");
       }
+  }, [attachments, MAX_TOTAL_SIZE_BYTES, MAX_TOTAL_SIZE_MB]);
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+        const clipboardFiles = event.clipboardData?.files;
+        if (clipboardFiles && clipboardFiles.length > 0) {
+            handleFiles(Array.from(clipboardFiles));
+        }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handleFiles]);
+  
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+        handleFiles(Array.from(files));
     }
     if (e.target) e.target.value = '';
   };
@@ -420,15 +599,63 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
     setAttachments([]);
     setUploadError('');
     await onSendMessage(trimmedInput, attachments);
+    
+    setTimeout(() => {
+        if(textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.focus();
+        }
+    }, 0);
   };
 
   const renderMessageNode = (message: Message) => {
     return <ChatMessage key={message.id} message={message} onOpenFile={setSidePanelFile} />;
   };
-
+  
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+        setIsDragging(true);
+    }
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+        setIsDragging(false);
+    }
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter.current = 0;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(Array.from(e.dataTransfer.files));
+    }
+  };
 
   return (
-    <div className="flex h-full relative overflow-hidden">
+    <div 
+        className="flex h-full relative overflow-hidden"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+    >
+        {isDragging && (
+            <div className="absolute inset-0 bg-gray-900/70 backdrop-blur-sm flex flex-col items-center justify-center z-50 pointer-events-none border-4 border-dashed border-gray-400 rounded-lg">
+                <Icon icon={PaperclipIcon} className="w-16 h-16 text-white mb-4" />
+                <p className="text-white text-2xl font-semibold">Drop images to attach</p>
+            </div>
+        )}
         <div className="flex flex-col h-full flex-1 min-w-0">
             <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center shrink-0">
                 <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400">
@@ -496,16 +723,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
                             multiple
                             className="hidden"
                         />
-                         <button 
-                            type="button" 
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isLoading}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:cursor-not-allowed"
-                            aria-label="Attach file"
-                        >
-                            <Icon icon={PaperclipIcon} className="w-5 h-5" />
-                        </button>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+                             <button 
+                                type="button" 
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isLoading}
+                                className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:cursor-not-allowed"
+                                aria-label="Attach file"
+                            >
+                                <Icon icon={PaperclipIcon} className="w-5 h-5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsCameraOpen(true)}
+                                disabled={isLoading}
+                                className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:cursor-not-allowed"
+                                aria-label="Use camera"
+                            >
+                                <Icon icon={CameraIcon} className="w-5 h-5" />
+                            </button>
+                        </div>
                         <textarea
+                        ref={textareaRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -516,7 +755,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
                         }}
                         placeholder="Message StefanGPT..."
                         rows={1}
-                        className="w-full px-12 py-3 pr-12 text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 resize-none"
+                        className="w-full pl-24 pr-12 py-3 text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 resize-none"
                         disabled={isLoading}
                         />
                         {isLoading ? (
@@ -550,6 +789,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
                     <CodeSidePanel file={sidePanelFile} onClose={() => setSidePanelFile(null)} />
                 </div>
             )
+        )}
+        {isCameraOpen && (
+            <CameraView 
+                onCapture={(file) => {
+                    handleFiles([file]);
+                    setIsCameraOpen(false);
+                }} 
+                onClose={() => setIsCameraOpen(false)} 
+            />
         )}
     </div>
   );

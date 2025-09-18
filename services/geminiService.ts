@@ -10,10 +10,32 @@ const callGeminiApi = async (type: string, payload: any, signal: AbortSignal) =>
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `API call failed with status ${response.status}`);
+            let errorText;
+            try {
+                // Try to parse a JSON error response first
+                const errorData = await response.json();
+                errorText = errorData.error;
+            } catch (e) {
+                // If that fails, the error is likely plain text (e.g., from a gateway)
+                errorText = await response.text();
+            }
+            throw new Error(errorText || `API call failed with status ${response.status}`);
         }
-        return await response.json();
+
+        const responseText = await response.text();
+        if (!responseText) {
+            // This can happen if the Netlify function times out but still returns a 200 OK
+            throw new Error("Received an empty response from the server.");
+        }
+        
+        try {
+            return JSON.parse(responseText);
+        } catch(e) {
+            // The function returned a success code but the body wasn't valid JSON
+            console.error("JSON parsing error for response:", responseText);
+            throw new Error("Received an invalid (non-JSON) response from the AI.");
+        }
+
     } catch (error) {
         console.error(`Error in ${type} API call:`, error);
         if (error instanceof Error) {

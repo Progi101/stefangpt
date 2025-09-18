@@ -13,13 +13,31 @@ export const generateImage = async (prompt: string, signal: AbortSignal): Promis
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to generate image.');
+            let errorText;
+            try {
+                const errorData = await response.json();
+                errorText = errorData.error;
+            } catch (e) {
+                errorText = await response.text();
+            }
+            throw new Error(errorText || 'Failed to generate image.');
         }
 
-        const { imageUrl } = await response.json();
-        // The server function now returns a base64 data URL.
-        return imageUrl;
+        const responseText = await response.text();
+        if (!responseText) {
+            throw new Error("Received an empty response from the image generation server.");
+        }
+
+        try {
+            const { imageUrl } = JSON.parse(responseText);
+            if (!imageUrl) {
+                 throw new Error("Invalid response format from image generation server.");
+            }
+            return imageUrl;
+        } catch (e) {
+            console.error("JSON parsing error for image response:", responseText);
+            throw new Error("Received an invalid (non-JSON) response from the image generation server.");
+        }
     } catch (error) {
         console.error("Error generating image:", error);
         if (error instanceof Error) {
