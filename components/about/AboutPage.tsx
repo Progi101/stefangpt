@@ -36,7 +36,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onToggleHistory }) => {
                 <section id="intro">
                     <h1 className="text-5xl font-extrabold mb-4 text-center text-gray-900 dark:text-white">Welcome to StefanGPT</h1>
                     <p className="text-xl text-center text-gray-600 dark:text-gray-300 leading-relaxed">
-                        StefanGPT is more than just a chatbot; it's a multifaceted AI assistant engineered to be your partner in creativity, knowledge exploration, and problem-solving. Created by developer Progi, this platform is built on the philosophy that artificial intelligence should be personal, powerful, and private. Whether you're a developer seeking code snippets, a writer battling creative block, a student researching a complex topic, or simply a curious mind, StefanGPT is designed to understand your needs and provide intelligent, relevant, and secure assistance.
+                        StefanGPT is more than just a chatbot; it's a multifaceted AI assistant engineered to be your partner in creativity, knowledge exploration, and problem-solving. Created by developer Progi (Daniel Iaconi), this platform is built on the philosophy that artificial intelligence should be personal, powerful, and private. The name 'StefanGPT' is a tribute to a close friend of the creator, Stefan, who provided invaluable help and support, so this AI was built in his honor. Whether you're a developer seeking code snippets, a writer battling creative block, a student researching a complex topic, or simply a curious mind, StefanGPT is designed to understand your needs and provide intelligent, relevant, and secure assistance.
                     </p>
                     <p className="text-lg text-center text-gray-600 dark:text-gray-400 mt-4">
                         Our mission is to provide a uniquely tailored AI experience that remembers your conversations, protects your data with a local-first approach, and extends your capabilities with integrated tools for image generation and web search. This isn't just another language model; it's your personal AI, ready to assist with your next big idea.
@@ -73,6 +73,17 @@ const AboutPage: React.FC<AboutPageProps> = ({ onToggleHistory }) => {
                                 "I created StefanGPT out of a passion for building tools that empower people. I envisioned an AI assistant that wasn't just a generic utility but a true partner—one that is smart, adaptable, and, most importantly, trustworthy. The goal was to combine the incredible power of modern language models with a user-centric design that prioritizes privacy and personalization. Every feature, from the local data storage to the open-source integrations, was chosen to put the user in control. This project is a testament to the idea that powerful AI can be accessible and secure. I hope StefanGPT helps you learn, create, and explore in ways you never thought possible."
                             </p>
                         </div>
+                    </div>
+                </section>
+                
+                <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+                <section id="sponsors">
+                    <h2 className="text-4xl font-bold mb-6 text-center">Special Thanks</h2>
+                    <div className="text-center">
+                        <p className="text-lg text-gray-600 dark:text-gray-400">
+                            A special thanks to <strong className="font-semibold text-gray-800 dark:text-white">beginer_plays</strong> for sponsoring this amazing project and helping make StefanGPT possible.
+                        </p>
                     </div>
                 </section>
 
