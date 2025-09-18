@@ -7,19 +7,6 @@ import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon
 declare const marked: any;
 declare const hljs: any;
 
-const parseMarkdown = (text: string) => {
-    if (typeof marked !== 'undefined') {
-        const renderer = new marked.Renderer();
-        const originalLinkRenderer = renderer.link;
-        renderer.link = (href, title, text) => {
-            const html = originalLinkRenderer.call(renderer, href, title, text);
-            return html.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
-        };
-        return marked.parse(text, { breaks: true, gfm: true, renderer });
-    }
-    return text.replace(/\n/g, '<br/>');
-};
-
 const CodeCopyButton: React.FC<{ content: string }> = ({ content }) => {
     const [isCopied, setIsCopied] = useState(false);
 
@@ -203,7 +190,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
                 case 'search':
                     return (
                         <div ref={messageRef}>
-                            <div className="whitespace-pre-wrap markdown-content" dangerouslySetInnerHTML={{ __html: parseMarkdown(content.text) }}></div>
+                            <div className="whitespace-pre-wrap markdown-content" dangerouslySetInnerHTML={{ __html: typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>') }}></div>
                             {content.citations.length > 0 && (
                                 <div className="mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                                     <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Sources:</h4>
@@ -224,7 +211,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
                     if (isUser) {
                         return <div className="whitespace-pre-wrap text-base">{content.text}</div>;
                     }
-                    return <div ref={messageRef} className="markdown-content" dangerouslySetInnerHTML={{ __html: parseMarkdown(content.text) }} />;
+                    const html = typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>');
+                    return <div ref={messageRef} className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} />;
                 default:
                      return null;
             }
@@ -497,10 +485,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, []);
 
   useEffect(() => {
     const lastMessage = session.messages[session.messages.length - 1];
