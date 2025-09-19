@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import HistoryPanel from './HistoryPanel';
 import ChatWindow from '../chat/ChatWindow';
@@ -11,6 +12,7 @@ import { generateChatResponse, generateTitleForChat, performWebSearch } from '..
 import { generateImage } from '../../services/imageService';
 import BottomNavBar from './BottomNavBar';
 import { resizeImageFromDataUrl } from '../../utils/imageUtils';
+import ImageLightbox from '../common/ImageLightbox';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
 
@@ -45,13 +47,14 @@ const MainLayout: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>('chat');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(() => {
     if (typeof window !== 'undefined') {
         return window.innerWidth >= 768;
     }
     return false;
   });
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -157,7 +160,7 @@ const MainLayout: React.FC = () => {
     if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
-        setIsLoading(false);
+        setLoadingMessage(null);
     }
   };
 
@@ -182,7 +185,39 @@ const MainLayout: React.FC = () => {
       messages: [...activeSession.messages, userMessage],
     };
     handleSessionUpdate(sessionWithUserMessage);
-    setIsLoading(true);
+
+    // Determine the dynamic loading message based on the user's prompt.
+    let dynamicMessage: string;
+    const lowercasedInput = prompt.toLowerCase().trim();
+    const searchPrefixes = ['search', 'find', 'lookup', 'google'];
+    const imagePrefixes = ['generate', 'create', 'draw', 'image of', 'picture of', 'icon of', 'logo of'];
+
+    let commandFound = false;
+    for (const prefix of imagePrefixes) {
+      if (lowercasedInput.startsWith(prefix + ' ')) {
+        const imagePrompt = prompt.substring(prefix.length + 1).trim();
+        dynamicMessage = `Generating an image of "${imagePrompt}"...`;
+        commandFound = true;
+        break;
+      }
+    }
+    if (!commandFound) {
+      for (const prefix of searchPrefixes) {
+        if (lowercasedInput.startsWith(prefix + ' ')) {
+          const searchPrompt = prompt.substring(prefix.length + 1).trim();
+          dynamicMessage = `Searching the web for "${searchPrompt}"...`;
+          commandFound = true;
+          break;
+        }
+      }
+    }
+     if (!commandFound) {
+      dynamicMessage = (attachments && attachments.length > 0) 
+        ? 'Analyzing the image...' 
+        : 'Thinking about your prompt...';
+    }
+    
+    setLoadingMessage(dynamicMessage);
     
     // Create and store the AbortController for this specific request
     abortControllerRef.current = new AbortController();
@@ -193,10 +228,6 @@ const MainLayout: React.FC = () => {
         let commandMatched = false;
 
         if (!attachments || attachments.length === 0) {
-            const lowercasedInput = prompt.toLowerCase().trim();
-            const searchPrefixes = ['search', 'find', 'lookup', 'google'];
-            const imagePrefixes = ['generate', 'create', 'draw', 'image of', 'picture of', 'icon of', 'logo of'];
-
             for (const prefix of searchPrefixes) {
                 if (lowercasedInput.startsWith(prefix + ' ')) {
                     const searchPrompt = prompt.substring(prefix.length + 1).trim();
@@ -299,7 +330,7 @@ const MainLayout: React.FC = () => {
         const sessionWithError = { ...sessionWithUserMessage, messages: [...sessionWithUserMessage.messages, errorMessage] };
         handleSessionUpdate(sessionWithError);
     } finally {
-        setIsLoading(false);
+        setLoadingMessage(null);
         abortControllerRef.current = null;
     }
   };
@@ -335,10 +366,11 @@ const MainLayout: React.FC = () => {
           <ChatWindow 
             key={activeSession.id} 
             session={activeSession} 
-            isLoading={isLoading}
+            loadingMessage={loadingMessage}
             onSendMessage={handleSendMessage}
             onCancelGeneration={handleCancelGeneration}
             onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
+            onOpenLightbox={setLightboxImageUrl}
           />
         ) : view === 'library' ? (
           <LibraryView sessions={sessions} onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />
@@ -361,6 +393,7 @@ const MainLayout: React.FC = () => {
             activeView={view}
         />
        )}
+       {lightboxImageUrl && <ImageLightbox imageUrl={lightboxImageUrl} onClose={() => setLightboxImageUrl(null)} />}
     </div>
   );
 };
