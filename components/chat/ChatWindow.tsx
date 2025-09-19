@@ -1,18 +1,16 @@
 
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatSession, Message, MessageSender, CodeFile } from '../../types';
-import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon, SparklesIcon } from '../common/Icon';
+import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon } from '../common/Icon';
 import ChatMessage, { CodeSidePanel } from './ChatMessage';
 import { resizeImageFromFile } from '../../utils/imageUtils';
 
 interface ChatWindowProps {
     session: ChatSession;
-    loadingMessage: string | null;
+    isLoading: boolean;
     onSendMessage: (prompt: string, attachments?: { dataUrl: string; mimeType: string; }[]) => Promise<void>;
     onCancelGeneration: () => void;
     onToggleHistory: () => void;
-    onOpenLightbox: (url: string) => void;
 }
 
 const useMediaQuery = (query: string): boolean => {
@@ -175,7 +173,7 @@ const CameraView: React.FC<{ onCapture: (file: File) => void; onClose: () => voi
     );
 };
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSendMessage, onCancelGeneration, onToggleHistory, onOpenLightbox }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onCancelGeneration, onToggleHistory }) => {
   const [input, setInput] = useState('');
   const [sidePanelFile, setSidePanelFile] = useState<CodeFile | null>(null);
   const [panelWidth, setPanelWidth] = useState(450);
@@ -188,7 +186,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSend
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 768px)');
-  const prevLoadingMessageRef = useRef<string | null>(loadingMessage);
+  const prevIsLoadingRef = useRef<boolean>(isLoading);
   
   const MAX_TOTAL_SIZE_MB = 5.5;
   const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_MB * 1024 * 1024;
@@ -199,14 +197,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSend
 
   useEffect(() => {
     const lastMessage = session.messages[session.messages.length - 1];
-    const wasLoading = !!prevLoadingMessageRef.current;
+    const wasLoading = prevIsLoadingRef.current;
     
-    if (lastMessage?.sender === MessageSender.USER || (!!loadingMessage && !wasLoading)) {
+    if (lastMessage?.sender === MessageSender.USER || (isLoading && !wasLoading)) {
         scrollToBottom();
     }
     
-    prevLoadingMessageRef.current = loadingMessage;
-  }, [session.messages, loadingMessage]);
+    prevIsLoadingRef.current = isLoading;
+  }, [session.messages, isLoading]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -312,7 +310,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSend
   const handleLocalSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmedInput = input.trim();
-    if ((!trimmedInput && attachments.length === 0) || !!loadingMessage) return;
+    if ((!trimmedInput && attachments.length === 0) || isLoading) return;
 
     setInput('');
     setAttachments([]);
@@ -391,13 +389,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSend
                     </div>
 
                     <div className="space-y-6">
-                        {session.messages.map(message => <ChatMessage key={message.id} message={message} onOpenFile={setSidePanelFile} onOpenLightbox={onOpenLightbox} />)}
-                        {loadingMessage && (
+                        {session.messages.map(message => <ChatMessage key={message.id} message={message} onOpenFile={setSidePanelFile} />)}
+                        {isLoading && (
                             <div className="flex items-start gap-4">
                                 <div className="max-w-xl px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
-                                    <div className="flex items-center gap-3">
-                                        <Icon icon={SparklesIcon} className="w-5 h-5 animate-pulse text-gray-500 dark:text-gray-400"/>
-                                        <span className="italic">{loadingMessage}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
+                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }}></span>
+                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></span>
                                     </div>
                                 </div>
                             </div>
@@ -441,7 +440,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSend
                              <button 
                                 type="button" 
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={!!loadingMessage}
+                                disabled={isLoading}
                                 className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:cursor-not-allowed"
                                 aria-label="Attach file"
                             >
@@ -450,7 +449,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSend
                             <button
                                 type="button"
                                 onClick={() => setIsCameraOpen(true)}
-                                disabled={!!loadingMessage}
+                                disabled={isLoading}
                                 className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:cursor-not-allowed"
                                 aria-label="Use camera"
                             >
@@ -470,9 +469,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, loadingMessage, onSend
                         placeholder="Message StefanGPT..."
                         rows={1}
                         className="w-full pl-24 pr-12 py-3 text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 resize-none"
-                        disabled={!!loadingMessage}
+                        disabled={isLoading}
                         />
-                        {!!loadingMessage ? (
+                        {isLoading ? (
                             <button type="button" onClick={onCancelGeneration} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors" aria-label="Stop generation">
                                 <Icon icon={StopIcon} className="w-5 h-5" />
                             </button>

@@ -82,10 +82,9 @@ export const CodeSidePanel: React.FC<{ file: CodeFile, onClose: () => void }> = 
 interface ChatMessageProps {
     message: Message;
     onOpenFile: (file: CodeFile) => void;
-    onOpenLightbox: (url: string) => void;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile, onOpenLightbox }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
     const isUser = message.sender === MessageSender.USER;
     const content = message.content;
     const messageRef = useRef<HTMLDivElement>(null);
@@ -156,13 +155,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile, onOpenLi
                         {content.imageUrls.length > 0 && (
                             <div className={`grid gap-2 grid-cols-1 ${content.imageUrls.length > 1 ? 'sm:grid-cols-2' : ''}`}>
                                 {content.imageUrls.map((url, index) => (
-                                    <button key={index} onClick={() => onOpenLightbox(url)} className="block w-full h-full">
-                                        <img 
-                                            src={url} 
-                                            alt={`User upload ${index + 1}`} 
-                                            className="rounded-lg w-full h-auto object-cover max-w-full cursor-pointer"
-                                        />
-                                    </button>
+                                    <img 
+                                        key={index} 
+                                        src={url} 
+                                        alt={`User upload ${index + 1}`} 
+                                        className="rounded-lg w-full h-auto object-cover max-w-full"
+                                    />
                                 ))}
                             </div>
                         )}
@@ -173,9 +171,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile, onOpenLi
                 return (
                     <div className="group relative">
                         <p className="italic text-gray-300 dark:text-gray-400 mb-2">Prompt: "{content.prompt}"</p>
-                        <button onClick={() => onOpenLightbox(content.imageUrl)} className="block">
-                            <img src={content.imageUrl} alt={content.prompt} className="rounded-lg max-w-sm cursor-pointer" />
-                        </button>
+                        <img src={content.imageUrl} alt={content.prompt} className="rounded-lg max-w-sm" />
                         <button onClick={() => handleDownload(content.imageUrl, content.prompt)} className="absolute top-2 right-2 p-1.5 bg-black bg-opacity-50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
                             <Icon icon={DownloadIcon} className="w-5 h-5" />
                         </button>
