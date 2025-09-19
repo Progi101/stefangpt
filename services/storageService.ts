@@ -1,4 +1,4 @@
-import { User, ChatSession } from '../types';
+import { User, ChatSession, TextContent } from '../types';
 
 const USERS_KEY = 'stefan_gpt_users';
 const CURRENT_USER_KEY = 'stefan_gpt_current_user';
@@ -91,7 +91,56 @@ export const getChatSessions = (): ChatSession[] => {
 export const saveChatSessions = (sessions: ChatSession[]): void => {
   const key = getChatsKeyForCurrentUser();
   if(!key) return;
-  localStorage.setItem(key, JSON.stringify(sessions));
+
+  // Sanitize sessions to prevent storing large image data that exceeds localStorage quota.
+  // This replaces image content with a text placeholder for long-term storage,
+  // preventing the "QuotaExceededError" crash. The in-memory state will still
+  // show images for the current session.
+  const sanitizedSessions = sessions.map(session => ({
+      ...session,
+      messages: session.messages.map(message => {
+          if (message.content.type === 'image') {
+              return {
+                  ...message,
+                  content: {
+                      type: 'text',
+                      text: `[AI generated an image for prompt: "${message.content.prompt}"]`
+                  } as TextContent
+              };
+          }
+          if (message.content.type === 'user-query' && message.content.imageUrls.length > 0) {
+              return {
+                  ...message,
+                  content: {
+                      type: 'text',
+                      text: message.content.text 
+                            ? `[User sent ${message.content.imageUrls.length} image(s) with prompt: "${message.content.text}"]`
+                            : `[User sent ${message.content.imageUrls.length} image(s)]`
+                  } as TextContent
+              };
+          }
+          return message;
+      })
+  }));
+
+  try {
+    localStorage.setItem(key, JSON.stringify(sanitizedSessions));
+  } catch (error) {
+    // Catch the QuotaExceededError specifically to prevent a crash.
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        console.warn(
+            "LocalStorage quota exceeded. Chat history may not be fully saved. " +
+            "This can happen with very long conversations even after image sanitization."
+        );
+        // This catch block prevents the application from crashing (white screen).
+        // For now, we log a warning. A more advanced strategy could be to trim
+        // the oldest messages or sessions.
+    } else {
+        console.error("Failed to save chat sessions to localStorage:", error);
+        // Re-throw other unexpected errors.
+        throw error;
+    }
+  }
 };
 
 export const saveChatSession = (session: ChatSession): void => {
