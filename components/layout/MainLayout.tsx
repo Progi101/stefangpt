@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import HistoryPanel from './HistoryPanel';
 import ChatWindow from '../chat/ChatWindow';
@@ -13,6 +10,7 @@ import Icon, { MenuIcon } from '../common/Icon';
 import { generateChatResponse, generateTitleForChat, performWebSearch } from '../../services/geminiService';
 import { generateImage } from '../../services/imageService';
 import BottomNavBar from './BottomNavBar';
+import { resizeImageFromDataUrl } from '../../utils/imageUtils';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
 
@@ -212,7 +210,15 @@ const MainLayout: React.FC = () => {
                 for (const prefix of imagePrefixes) {
                     if (lowercasedInput.startsWith(prefix + ' ')) {
                         const imagePrompt = prompt.substring(prefix.length + 1).trim();
-                        const imageUrl = await generateImage(imagePrompt, signal);
+                        let imageUrl = await generateImage(imagePrompt, signal);
+
+                        try {
+                            const resizedDataUrl = await resizeImageFromDataUrl(imageUrl);
+                            imageUrl = resizedDataUrl;
+                        } catch (resizeError) {
+                            console.warn("Could not resize AI-generated image, using original.", resizeError);
+                        }
+
                         aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'image', imageUrl, prompt: imagePrompt } });
                         commandMatched = true;
                         break;

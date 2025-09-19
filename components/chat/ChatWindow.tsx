@@ -1,60 +1,9 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatSession, Message, MessageSender, CodeFile } from '../../types';
 import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon } from '../common/Icon';
 import ChatMessage, { CodeSidePanel } from './ChatMessage';
-
-const resizeImage = (file: File): Promise<{ dataUrl: string; mimeType: string; }> => {
-    const MAX_DIMENSION = 1024;
-    const QUALITY = 0.9;
-
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            try {
-                if (!event.target?.result) {
-                    return reject(new Error("FileReader did not return a result."));
-                }
-                const img = new Image();
-                img.src = event.target.result as string;
-                img.onload = () => {
-                    const { width, height } = img;
-
-                    if (width <= MAX_DIMENSION && height <= MAX_DIMENSION) {
-                        return resolve({ dataUrl: img.src, mimeType: file.type });
-                    }
-
-                    let newWidth, newHeight;
-                    if (width > height) {
-                        newWidth = MAX_DIMENSION;
-                        newHeight = Math.round((height * MAX_DIMENSION) / width);
-                    } else {
-                        newHeight = MAX_DIMENSION;
-                        newWidth = Math.round((width * MAX_DIMENSION) / height);
-                    }
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = newWidth;
-                    canvas.height = newHeight;
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        return reject(new Error('Could not get 2D canvas context'));
-                    }
-                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
-                    
-                    const mimeType = 'image/jpeg';
-                    const dataUrl = canvas.toDataURL(mimeType, QUALITY);
-
-                    resolve({ dataUrl, mimeType });
-                };
-                img.onerror = () => reject(new Error(`Image loading failed. The file might be corrupt.`));
-            } catch (e) {
-                reject(new Error("An unexpected error occurred while processing the image."));
-            }
-        };
-        reader.onerror = () => reject(new Error(`Failed to read the file.`));
-    });
-};
+import { resizeImageFromFile } from '../../utils/imageUtils';
 
 interface ChatWindowProps {
     session: ChatSession;
@@ -316,7 +265,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
 
       try {
           const newAttachmentsPromises = imageFiles.map(async file => {
-              const { dataUrl, mimeType } = await resizeImage(file);
+              const { dataUrl, mimeType } = await resizeImageFromFile(file);
               return { file, dataUrl, mimeType };
           });
           const newAttachments = await Promise.all(newAttachmentsPromises);
@@ -332,7 +281,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
           console.error("Error processing image:", error);
           setUploadError(error instanceof Error ? error.message : "There was an error processing an image file.");
       }
-  }, [attachments, MAX_TOTAL_SIZE_BYTES, MAX_TOTAL_SIZE_MB]);
+  }, [attachments, MAX_TOTAL_SIZE_BYTES]);
 
   useEffect(() => {
     const handlePaste = (event: ClipboardEvent) => {
