@@ -1,8 +1,7 @@
-// FIX: Corrected typo in React hooks import statement.
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { ChatSession, Message, MessageSender, MessageContent, CodeFile, FilesContent, UserQueryContent } from '../../types';
-import Icon, { SendIcon, UserIcon, DownloadIcon, MenuIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon, PaperclipIcon } from '../common/Icon';
+import { Message, MessageSender, CodeFile, FilesContent } from '../../types';
+import Icon, { UserIcon, DownloadIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon } from '../common/Icon';
 
 declare const marked: any;
 declare const hljs: any;
@@ -47,7 +46,7 @@ const FileGroupDisplay: React.FC<{ content: FilesContent, onOpenFile: (file: Cod
     );
 };
 
-const CodeSidePanel: React.FC<{ file: CodeFile, onClose: () => void }> = ({ file, onClose }) => {
+export const CodeSidePanel: React.FC<{ file: CodeFile, onClose: () => void }> = ({ file, onClose }) => {
     const codeRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
@@ -91,9 +90,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
     const messageRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Safety checks to prevent crashes
         if (!messageRef.current || !messageRef.current.isConnected) return;
-        if (content.type !== 'text' && content.type !== 'search') return;
+        if (content.type !== 'text' && content.type !== 'search' && content.type !== 'user-query') return;
 
         const roots: any[] = [];
         const preElements = messageRef.current.querySelectorAll('pre');
@@ -119,8 +117,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
             }
         });
         
-        // Cleanup function to unmount all the dynamically created React roots.
-        // This prevents errors when the component re-renders or unmounts.
         return () => {
             roots.forEach(root => root.unmount());
         };
@@ -150,79 +146,63 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
     };
 
     const renderContent = () => {
-        const parts: { type: string, node: React.ReactNode, id: string }[] = [];
-        
-        if (content.type === 'files') {
-            parts.push({ type: 'files', id: 'files', node: <FileGroupDisplay content={content} onOpenFile={onOpenFile} />});
-        }
-        
-        const otherContent = () => {
-            switch (content.type) {
-                case 'user-query':
-                    return (
-                        <div className="space-y-3">
-                            {content.imageUrls.length > 0 && (
-                                <div className={`grid gap-2 grid-cols-1 ${content.imageUrls.length > 1 ? 'sm:grid-cols-2' : ''}`}>
-                                    {content.imageUrls.map((url, index) => (
-                                        <img 
-                                            key={index} 
-                                            src={url} 
-                                            alt={`User upload ${index + 1}`} 
-                                            className="rounded-lg w-full h-auto object-cover max-w-full"
-                                        />
+        switch (content.type) {
+            case 'files':
+                return <FileGroupDisplay content={content} onOpenFile={onOpenFile} />;
+            case 'user-query':
+                return (
+                    <div className="space-y-3" ref={messageRef}>
+                        {content.imageUrls.length > 0 && (
+                            <div className={`grid gap-2 grid-cols-1 ${content.imageUrls.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                                {content.imageUrls.map((url, index) => (
+                                    <img 
+                                        key={index} 
+                                        src={url} 
+                                        alt={`User upload ${index + 1}`} 
+                                        className="rounded-lg w-full h-auto object-cover max-w-full"
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        {content.text && <div className="markdown-content" dangerouslySetInnerHTML={{ __html: typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>') }}></div>}
+                    </div>
+                );
+            case 'image':
+                return (
+                    <div className="group relative">
+                        <p className="italic text-gray-300 dark:text-gray-400 mb-2">Prompt: "{content.prompt}"</p>
+                        <img src={content.imageUrl} alt={content.prompt} className="rounded-lg max-w-sm" />
+                        <button onClick={() => handleDownload(content.imageUrl, content.prompt)} className="absolute top-2 right-2 p-1.5 bg-black bg-opacity-50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Icon icon={DownloadIcon} className="w-5 h-5" />
+                        </button>
+                    </div>
+                );
+            case 'search':
+                return (
+                    <div ref={messageRef}>
+                        <div className="whitespace-pre-wrap markdown-content" dangerouslySetInnerHTML={{ __html: typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>') }}></div>
+                        {content.citations.length > 0 && (
+                            <div className="mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Sources:</h4>
+                                <ul className="space-y-1">
+                                    {content.citations.map((cite, index) => (
+                                        <li key={index} className="text-xs">
+                                            <a href={cite.uri} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 hover:underline truncate">
+                                                [{index + 1}] {cite.title}
+                                            </a>
+                                        </li>
                                     ))}
-                                </div>
-                            )}
-                            {content.text && <div className="markdown-content text-base" dangerouslySetInnerHTML={{ __html: content.text.replace(/\n/g, '<br/>') }}></div>}
-                        </div>
-                    );
-                case 'image':
-                    return (
-                        <div className="group relative">
-                            <p className="italic text-gray-300 dark:text-gray-400 mb-2">Prompt: "{content.prompt}"</p>
-                            <img src={content.imageUrl} alt={content.prompt} className="rounded-lg max-w-sm" />
-                            <button onClick={() => handleDownload(content.imageUrl, content.prompt)} className="absolute top-2 right-2 p-1.5 bg-black bg-opacity-50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Icon icon={DownloadIcon} className="w-5 h-5" />
-                            </button>
-                        </div>
-                    );
-                case 'search':
-                    return (
-                        <div ref={messageRef}>
-                            <div className="whitespace-pre-wrap markdown-content" dangerouslySetInnerHTML={{ __html: typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>') }}></div>
-                            {content.citations.length > 0 && (
-                                <div className="mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
-                                    <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Sources:</h4>
-                                    <ul className="space-y-1">
-                                        {content.citations.map((cite, index) => (
-                                            <li key={index} className="text-xs">
-                                                <a href={cite.uri} target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 hover:underline truncate">
-                                                    [{index + 1}] {cite.title}
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    );
-                case 'text':
-                    const html = typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>');
-                    return <div ref={messageRef} className={`markdown-content ${isUser ? 'text-base' : ''}`} dangerouslySetInnerHTML={{ __html: html }} />;
-                default:
-                     return null;
-            }
-        };
-
-        if (content.type !== 'files') {
-            parts.push({ type: 'other', id: 'other', node: otherContent() });
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                );
+            case 'text':
+                const html = typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>');
+                return <div ref={messageRef} className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} />;
+            default:
+                 return null;
         }
-
-        return (
-            <div className="space-y-3">
-                {parts.map(part => <div key={part.id}>{part.node}</div>)}
-            </div>
-        );
     };
     
     const isFiles = message.content.type === 'files';
