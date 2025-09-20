@@ -371,7 +371,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
         )}
         <div className="flex flex-col h-full flex-1 min-w-0">
             <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center shrink-0">
-                <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400">
+                <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400 md:hidden">
                     <Icon icon={MenuIcon} className="w-6 h-6"/>
                 </button>
                 <h2 className="text-xl font-semibold truncate">{session.title}</h2>

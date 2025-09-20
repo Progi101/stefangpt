@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { ChatSession, Message, ImageContent, SearchResultContent } from '../../types';
 import Icon, { DownloadIcon, MenuIcon } from '../common/Icon';
@@ -113,7 +114,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({ sessions, onToggleHistory }) 
   return (
     <div className="h-full flex flex-col">
         <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center shrink-0">
-            <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400">
+            <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400 md:hidden">
                 <Icon icon={MenuIcon} className="w-6 h-6"/>
             </button>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Library</h2>

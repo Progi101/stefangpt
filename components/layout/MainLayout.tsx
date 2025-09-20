@@ -46,12 +46,7 @@ const MainLayout: React.FC = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>('chat');
   const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-        return window.innerWidth >= 768;
-    }
-    return false;
-  });
+  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -82,10 +77,10 @@ const MainLayout: React.FC = () => {
     setActiveSessionId(newSession.id);
     sessionStorage.setItem(ACTIVE_SESSION_ID_KEY, newSession.id);
     setView('chat');
-    if (window.innerWidth < 768) {
+    if (!isDesktop) {
       setIsHistoryPanelOpen(false);
     }
-  }, []);
+  }, [isDesktop]);
 
   useEffect(() => {
     const loadedSessions = getChatSessions();
@@ -130,7 +125,7 @@ const MainLayout: React.FC = () => {
     setActiveSessionId(id);
     sessionStorage.setItem(ACTIVE_SESSION_ID_KEY, id);
     setView('chat');
-    if (window.innerWidth < 768) {
+    if (!isDesktop) {
       setIsHistoryPanelOpen(false);
     }
   };
@@ -139,7 +134,7 @@ const MainLayout: React.FC = () => {
       setView('library');
       setActiveSessionId(null);
       sessionStorage.removeItem(ACTIVE_SESSION_ID_KEY);
-      if (window.innerWidth < 768) {
+      if (!isDesktop) {
         setIsHistoryPanelOpen(false);
       }
   };
@@ -148,7 +143,7 @@ const MainLayout: React.FC = () => {
       setView('about');
       setActiveSessionId(null);
       sessionStorage.removeItem(ACTIVE_SESSION_ID_KEY);
-      if (window.innerWidth < 768) {
+      if (!isDesktop) {
         setIsHistoryPanelOpen(false);
       }
   };
@@ -316,9 +311,10 @@ const MainLayout: React.FC = () => {
           ></div>
       )}
       <div className={`
-        w-4/5 sm:w-80 md:w-64 h-full shrink-0 transform transition-all duration-300 ease-in-out
-        fixed md:static z-30
-        ${isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-full md:ml-[-16rem]'}
+        w-4/5 sm:w-80 md:w-64 h-full shrink-0
+        fixed z-30 transition-transform duration-300 ease-in-out
+        md:hover:translate-x-0
+        ${isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-[-calc(100%-3.5rem)]'}
       `}>
         <HistoryPanel
             sessions={sessions}
@@ -346,7 +342,7 @@ const MainLayout: React.FC = () => {
            <AboutPage onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
-             <button onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} className="p-2 mb-4 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+             <button onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} className="p-2 mb-4 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden">
                   <Icon icon={MenuIcon} className="w-8 h-8"/>
               </button>
              Select a chat or start a new one.

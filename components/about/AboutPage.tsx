@@ -24,7 +24,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ onToggleHistory }) => {
   return (
     <div className="h-full flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
         <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center shrink-0 bg-white dark:bg-gray-800/50 backdrop-blur-sm sticky top-0 z-10">
-            <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400">
+            <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400 md:hidden">
                 <Icon icon={MenuIcon} className="w-6 h-6"/>
             </button>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">About StefanGPT</h2>
