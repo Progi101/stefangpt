@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Message, MessageSender, CodeFile, FilesContent } from '../../types';
 import Icon, { UserIcon, DownloadIcon, ClipboardDocumentIcon, CheckIcon, FolderIcon, DocumentIcon, XIcon } from '../common/Icon';
+import { marked } from 'marked';
 
-declare const marked: any;
 declare const hljs: any;
 
 const CodeCopyButton: React.FC<{ content: string }> = ({ content }) => {
@@ -164,7 +164,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
                                 ))}
                             </div>
                         )}
-                        {content.text && <div className="markdown-content" dangerouslySetInnerHTML={{ __html: typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>') }}></div>}
+                        {content.text && <div className="markdown-content" dangerouslySetInnerHTML={{ __html: marked.parse(content.text, { breaks: true, gfm: true }) }}></div>}
                     </div>
                 );
             case 'image':
@@ -180,7 +180,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
             case 'search':
                 return (
                     <div ref={messageRef}>
-                        <div className="whitespace-pre-wrap markdown-content" dangerouslySetInnerHTML={{ __html: typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>') }}></div>
+                        <div className="whitespace-pre-wrap markdown-content" dangerouslySetInnerHTML={{ __html: marked.parse(content.text, { breaks: true, gfm: true }) }}></div>
                         {content.citations.length > 0 && (
                             <div className="mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Sources:</h4>
@@ -198,7 +198,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
                     </div>
                 );
             case 'text':
-                const html = typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>');
+                const html = marked.parse(content.text, { breaks: true, gfm: true });
                 return <div ref={messageRef} className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} />;
             default:
                  return null;
