@@ -1,3 +1,4 @@
+
 import { Handler } from '@netlify/functions';
 import { Buffer } from 'buffer';
 
@@ -14,9 +15,17 @@ export const handler: Handler = async (event) => {
     }
 
     try {
-        const { prompt } = JSON.parse(event.body || '{}');
+        const { prompt, negativePrompt } = JSON.parse(event.body || '{}');
         if (!prompt) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Prompt is required.' }) };
+        }
+
+        const payload: { inputs: string, parameters?: { negative_prompt?: string } } = {
+            inputs: prompt,
+        };
+
+        if (negativePrompt) {
+            payload.parameters = { negative_prompt: negativePrompt };
         }
 
         const response = await fetch(API_URL, {
@@ -25,7 +34,7 @@ export const handler: Handler = async (event) => {
                 'Authorization': `Bearer ${HUGGING_FACE_API_KEY}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ inputs: prompt }),
+            body: JSON.stringify(payload),
         });
 
         // The API might return a JSON error if the model is loading or there's an issue

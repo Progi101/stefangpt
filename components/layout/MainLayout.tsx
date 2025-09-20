@@ -11,10 +11,11 @@ import { generateChatResponse, generateTitleForChat, performWebSearch } from '..
 import { generateImage } from '../../services/imageService';
 import BottomNavBar from './BottomNavBar';
 import { resizeImageFromDataUrl } from '../../utils/imageUtils';
+import ImageGeneratorPage from '../generator/ImageGeneratorPage';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
 
-type ViewType = 'chat' | 'library' | 'about';
+type ViewType = 'chat' | 'library' | 'about' | 'generator';
 
 const useMediaQuery = (query: string): boolean => {
     const [matches, setMatches] = useState(() => {
@@ -147,6 +148,15 @@ const MainLayout: React.FC = () => {
         setIsHistoryPanelOpen(false);
       }
   };
+
+  const handleShowGenerator = () => {
+      setView('generator');
+      setActiveSessionId(null);
+      sessionStorage.removeItem(ACTIVE_SESSION_ID_KEY);
+      if (!isDesktop) {
+          setIsHistoryPanelOpen(false);
+      }
+  };
   
   const handleCancelGeneration = () => {
     if (abortControllerRef.current) {
@@ -205,7 +215,7 @@ const MainLayout: React.FC = () => {
                 for (const prefix of imagePrefixes) {
                     if (lowercasedInput.startsWith(prefix + ' ')) {
                         const imagePrompt = prompt.substring(prefix.length + 1).trim();
-                        let imageUrl = await generateImage(imagePrompt, signal);
+                        let imageUrl = await generateImage(imagePrompt, undefined, signal);
 
                         try {
                             const resizedDataUrl = await resizeImageFromDataUrl(imageUrl);
@@ -301,6 +311,38 @@ const MainLayout: React.FC = () => {
   
   const activeSession = activeSessionId ? sessions.find(s => s.id === activeSessionId) : undefined;
 
+  const renderView = () => {
+    switch(view) {
+        case 'chat':
+            return activeSession ? (
+                <ChatWindow 
+                    key={activeSession.id} 
+                    session={activeSession} 
+                    isLoading={isLoading}
+                    onSendMessage={handleSendMessage}
+                    onCancelGeneration={handleCancelGeneration}
+                    onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
+                />
+            ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                   <button onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} className="p-2 mb-4 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden">
+                        <Icon icon={MenuIcon} className="w-8 h-8"/>
+                    </button>
+                   Select a chat or start a new one.
+                </div>
+            );
+        case 'library':
+            return <LibraryView sessions={sessions} onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />;
+        case 'about':
+            return <AboutPage onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />;
+        case 'generator':
+            return <ImageGeneratorPage onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />;
+        default:
+             return <div className="flex flex-col items-center justify-center h-full text-gray-500">Select a view.</div>;
+    }
+  }
+
+
   return (
     <div className="flex h-screen relative overflow-hidden">
       {isHistoryPanelOpen && !isDesktop && (
@@ -323,36 +365,18 @@ const MainLayout: React.FC = () => {
             onSelectSession={handleSelectSession}
             onShowLibrary={handleShowLibrary}
             onShowAbout={handleShowAbout}
+            onShowGenerator={handleShowGenerator}
             onClose={() => setIsHistoryPanelOpen(false)}
         />
       </div>
       <main className={`flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden ${!isDesktop ? 'pb-16' : ''}`}>
-        {view === 'chat' && activeSession ? (
-          <ChatWindow 
-            key={activeSession.id} 
-            session={activeSession} 
-            isLoading={isLoading}
-            onSendMessage={handleSendMessage}
-            onCancelGeneration={handleCancelGeneration}
-            onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
-          />
-        ) : view === 'library' ? (
-          <LibraryView sessions={sessions} onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />
-        ) : view === 'about' ? (
-           <AboutPage onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-             <button onClick={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} className="p-2 mb-4 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden">
-                  <Icon icon={MenuIcon} className="w-8 h-8"/>
-              </button>
-             Select a chat or start a new one.
-          </div>
-        )}
+        {renderView()}
       </main>
       {!isDesktop && (
         <BottomNavBar
             onNewChat={handleNewChat}
             onShowLibrary={handleShowLibrary}
+            onShowGenerator={handleShowGenerator}
             onToggleHistory={() => setIsHistoryPanelOpen(true)}
             activeView={view}
         />
