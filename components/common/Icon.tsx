@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
@@ -184,8 +185,25 @@ export const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) 
 );
 
 export const LogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path fillRule="evenodd" d="M12 2 C19 2 22 5 22 12 C22 19 19 22 12 22 C5 22 2 19 2 12 C2 5 5 2 12 2 Z M8.5 10.5 L8.5 11 L8 11 L8 12 L8.5 12 L8.5 12.5 L9.5 12.5 L9.5 12 L10 12 L10 11 L9.5 11 L9.5 10.5 L8.5 10.5 Z M14.5 10.5 L14.5 11 L14 11 L14 12 L14.5 12 L14.5 12.5 L15.5 12.5 L15.5 12 L16 12 L16 11 L15.5 11 L15.5 10.5 L14.5 10.5 Z" />
+    <svg {...props} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="diamond-gradient" x1="50" y1="5" x2="50" y2="95" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#6EE7B7"/>
+                <stop offset="1" stopColor="#34D399"/>
+            </linearGradient>
+            <filter id="eye-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+        <path d="M50 5 L95 50 L50 95 L5 50 Z" fill="url(#diamond-gradient)" stroke="#10B981" strokeWidth="2"/>
+        <g filter="url(#eye-glow)">
+          <circle cx="40" cy="50" r="7" fill="#FFFFFF"/>
+          <circle cx="60" cy="50" r="7" fill="#FFFFFF"/>
+        </g>
     </svg>
 );
 
