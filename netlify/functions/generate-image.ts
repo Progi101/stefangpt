@@ -2,7 +2,7 @@ import { Handler } from '@netlify/functions';
 import { Buffer } from 'buffer';
 
 const HUGGING_FACE_API_KEY = process.env.HUGGING_FACE_API_KEY;
-const API_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+const API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5";
 
 export const handler: Handler = async (event) => {
     if (event.httpMethod !== 'POST') {
