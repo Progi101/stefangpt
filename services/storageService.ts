@@ -1,16 +1,21 @@
-import { User, ChatSession, TextContent } from '../types';
+import { User, ChatSession } from '../types';
 
 const USERS_KEY = 'stefan_gpt_users';
 const CURRENT_USER_KEY = 'stefan_gpt_current_user';
-const CHATS_KEY_PREFIX = 'stefan_gpt_chats_';
+// --- New Storage Keys ---
+const CHATS_METADATA_KEY_PREFIX = 'stefan_gpt_chats_';
+const SESSION_KEY_PREFIX = 'stefan_gpt_session_';
+// Old key for migration
+const OLD_CHATS_KEY_PREFIX = 'stefan_gpt_chats_';
+
 
 // --- Data Persistence Strategy ---
-// The application uses the browser's `localStorage` as a persistent data store.
-// This ensures that user data, including accounts and chat sessions, is saved
-// across browser sessions and application updates. Data will remain until the
-// user manually clears their browser's site data.
+// The application uses the browser's `localStorage`.
+// To improve performance, chat sessions are stored individually.
+// A "metadata" entry holds an array of {id, title, createdAt} for quick listing.
+// Each full session is stored under a key like `stefan_gpt_session_{id}`.
+// This prevents loading all message data into memory at once.
 
-// A simple list of fragments to check for. In a real app, this would be more robust.
 const profanityFragments = ['fuck', 'shit', 'bitch', 'cunt', 'nigger', 'nigga', 'asshole', 'dick', 'pussy', 'slut', 'whore', 'rape', 'raping'];
 
 // --- User Management ---
@@ -33,11 +38,6 @@ export const registerUser = async (username: string, password: string): Promise<
   }
 
   const users = getUsers();
-
-  // Robust check: This ensures case-insensitive uniqueness against both the storage
-  // keys (for new accounts) and the `username` property within the stored user 
-  // objects (to handle legacy data structures). This prevents 'Progi' and 'progi' 
-  // from being treated as different users, regardless of how the data was stored previously.
   const isUsernameTaken = users[lowercasedUsername] || 
                           Object.values(users).some(user => user.username.toLowerCase() === lowercasedUsername);
   
@@ -45,8 +45,7 @@ export const registerUser = async (username: string, password: string): Promise<
     throw new Error("Username is already taken.");
   }
 
-  // Store the user object with the original casing for display, but use the lowercased version as the key for uniqueness.
-  const newUser: User = { username, passwordHash: password }; // Plaintext for simplicity
+  const newUser: User = { username, passwordHash: password };
   users[lowercasedUsername] = newUser;
   saveUsers(users);
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
@@ -55,7 +54,6 @@ export const registerUser = async (username: string, password: string): Promise<
 
 export const loginUser = async (username: string, password: string): Promise<User | null> => {
   const users = getUsers();
-  // Perform a case-insensitive lookup for the username to match the registration logic.
   const user = users[username.toLowerCase()];
   if (user && user.passwordHash === password) {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
@@ -75,86 +73,123 @@ export const getCurrentUser = (): User | null => {
 
 // --- Chat Session Management ---
 
-const getChatsKeyForCurrentUser = (): string | null => {
+const getChatsMetadataKey = (): string | null => {
     const user = getCurrentUser();
-    // The username here is the original case, which is unique due to the registration check.
-    return user ? `${CHATS_KEY_PREFIX}${user.username}` : null;
+    return user ? `${CHATS_METADATA_KEY_PREFIX}${user.username}` : null;
 }
 
-export const getChatSessions = (): ChatSession[] => {
-  const key = getChatsKeyForCurrentUser();
+const getSessionKey = (sessionId: string): string => `${SESSION_KEY_PREFIX}${sessionId}`;
+
+const migrateOldChatData = (username: string): void => {
+    const oldKey = `${OLD_CHATS_KEY_PREFIX}${username}`;
+    const oldData = localStorage.getItem(oldKey);
+    if (!oldData) return; // No old data to migrate
+
+    console.log("Old chat data format found. Migrating to new format...");
+    try {
+        const allSessions: ChatSession[] = JSON.parse(oldData);
+        if (!Array.isArray(allSessions)) {
+             localStorage.removeItem(oldKey);
+             return;
+        }
+
+        const metadatas = allSessions.map(({ id, title, createdAt }) => ({ id, title, createdAt }));
+        
+        // Save metadatas to the new master key
+        const newMetadataKey = `${CHATS_METADATA_KEY_PREFIX}${username}`;
+        localStorage.setItem(newMetadataKey, JSON.stringify(metadatas));
+
+        // Save each session individually
+        allSessions.forEach(session => {
+            localStorage.setItem(getSessionKey(session.id), JSON.stringify(session));
+        });
+
+        // Remove old key after successful migration
+        localStorage.removeItem(oldKey);
+        console.log("Migration successful.");
+    } catch (error) {
+        console.error("Failed to migrate old chat data. The data may be corrupt. Discarding old data.", error);
+        // If parsing fails, remove the corrupt old data to prevent future errors.
+        localStorage.removeItem(oldKey);
+    }
+}
+
+export const getChatSessionMetadatas = (): Pick<ChatSession, 'id' | 'title' | 'createdAt'>[] => {
+  const user = getCurrentUser();
+  if (!user) return [];
+  
+  // Run migration check
+  migrateOldChatData(user.username);
+  
+  const key = getChatsMetadataKey();
   if(!key) return [];
-  const sessions = localStorage.getItem(key);
-  return sessions ? JSON.parse(sessions) : [];
-};
-
-export const saveChatSessions = (sessions: ChatSession[]): void => {
-  const key = getChatsKeyForCurrentUser();
-  if(!key) return;
-
-  // Sanitize sessions to prevent storing large image data that exceeds localStorage quota.
-  // This replaces image content with a text placeholder for long-term storage,
-  // preventing the "QuotaExceededError" crash. The in-memory state will still
-  // show images for the current session.
-  const sanitizedSessions = sessions.map(session => ({
-      ...session,
-      messages: session.messages.map(message => {
-          if (message.content.type === 'image') {
-              return {
-                  ...message,
-                  content: {
-                      type: 'text',
-                      text: `[AI generated an image for prompt: "${message.content.prompt}"]`
-                  } as TextContent
-              };
-          }
-          if (message.content.type === 'user-query' && message.content.imageUrls.length > 0) {
-              return {
-                  ...message,
-                  content: {
-                      type: 'text',
-                      text: message.content.text 
-                            ? `[User sent ${message.content.imageUrls.length} image(s) with prompt: "${message.content.text}"]`
-                            : `[User sent ${message.content.imageUrls.length} image(s)]`
-                  } as TextContent
-              };
-          }
-          return message;
-      })
-  }));
+  const metadatas = localStorage.getItem(key);
+  if (!metadatas) return [];
 
   try {
-    localStorage.setItem(key, JSON.stringify(sanitizedSessions));
+    const parsedMetadatas = JSON.parse(metadatas);
+    // Sort by createdAt descending to ensure newest is always first
+    return parsedMetadatas.sort((a: any, b: any) => b.createdAt - a.createdAt);
   } catch (error) {
-    // Catch the QuotaExceededError specifically to prevent a crash.
-    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        console.warn(
-            "LocalStorage quota exceeded. Chat history may not be fully saved. " +
-            "This can happen with very long conversations even after image sanitization."
-        );
-        // This catch block prevents the application from crashing (white screen).
-        // For now, we log a warning. A more advanced strategy could be to trim
-        // the oldest messages or sessions.
-    } else {
-        console.error("Failed to save chat sessions to localStorage:", error);
-        // Re-throw other unexpected errors.
-        throw error;
-    }
+    console.error("Failed to parse chat session metadatas. Clearing corrupt data.", error);
+    localStorage.removeItem(key);
+    return [];
   }
 };
 
-export const saveChatSession = (session: ChatSession): void => {
-    const sessions = getChatSessions();
-    const index = sessions.findIndex(s => s.id === session.id);
-    if (index > -1) {
-        sessions[index] = session;
-    } else {
-        sessions.unshift(session);
-    }
-    saveChatSessions(sessions);
+export const getAllChatSessions = (): ChatSession[] => {
+    const metadatas = getChatSessionMetadatas();
+    return metadatas
+        .map(meta => getChatSession(meta.id))
+        .filter((session): session is ChatSession => session !== undefined);
 };
 
+
 export const getChatSession = (id: string): ChatSession | undefined => {
-    const sessions = getChatSessions();
-    return sessions.find(s => s.id === id);
+    const key = getSessionKey(id);
+    const sessionData = localStorage.getItem(key);
+    if (!sessionData) return undefined;
+
+    try {
+        return JSON.parse(sessionData);
+    } catch (error) {
+        console.error(`Failed to parse session ${id}. Data might be corrupt.`, error);
+        localStorage.removeItem(key); // Remove corrupt session
+        return undefined;
+    }
 }
+
+export const saveChatSession = (session: ChatSession): void => {
+    // 1. Save the full session object under its own key
+    const sessionKey = getSessionKey(session.id);
+    try {
+        localStorage.setItem(sessionKey, JSON.stringify(session));
+    } catch (error) {
+        console.error(`Failed to save session ${session.id}.`, error);
+        if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+             console.warn("LocalStorage quota exceeded. This session may not be saved.");
+        }
+        return; // Don't update metadata if session save failed
+    }
+
+    // 2. Update the metadata list
+    const metadatas = getChatSessionMetadatas();
+    const newMetadata = { id: session.id, title: session.title, createdAt: session.createdAt };
+    const index = metadatas.findIndex(m => m.id === session.id);
+
+    if (index > -1) {
+        metadatas[index] = newMetadata;
+    } else {
+        metadatas.unshift(newMetadata);
+    }
+    
+    // Save the updated metadata list
+    const metadataKey = getChatsMetadataKey();
+    if (metadataKey) {
+        try {
+            localStorage.setItem(metadataKey, JSON.stringify(metadatas));
+        } catch (error) {
+            console.error("Failed to save chat metadatas.", error);
+        }
+    }
+};
