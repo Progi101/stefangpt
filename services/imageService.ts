@@ -13,14 +13,15 @@ export const generateImage = async (prompt: string, signal: AbortSignal): Promis
         });
 
         if (!response.ok) {
-            let errorText;
+            const errorBody = await response.text();
+            let errorMessage;
             try {
-                const errorData = await response.json();
-                errorText = errorData.error;
+                const errorJson = JSON.parse(errorBody);
+                errorMessage = errorJson.error;
             } catch (e) {
-                errorText = await response.text();
+                errorMessage = errorBody;
             }
-            throw new Error(errorText || 'Failed to generate image.');
+            throw new Error(errorMessage || 'Failed to generate image.');
         }
 
         const responseText = await response.text();

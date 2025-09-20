@@ -10,16 +10,15 @@ const callGeminiApi = async (type: string, payload: any, signal: AbortSignal) =>
         });
 
         if (!response.ok) {
-            let errorText;
+            const errorBody = await response.text();
+            let errorMessage;
             try {
-                // Try to parse a JSON error response first
-                const errorData = await response.json();
-                errorText = errorData.error;
+                const errorJson = JSON.parse(errorBody);
+                errorMessage = errorJson.error;
             } catch (e) {
-                // If that fails, the error is likely plain text (e.g., from a gateway)
-                errorText = await response.text();
+                errorMessage = errorBody;
             }
-            throw new Error(errorText || `API call failed with status ${response.status}`);
+            throw new Error(errorMessage || `API call failed with status ${response.status}`);
         }
 
         const responseText = await response.text();
