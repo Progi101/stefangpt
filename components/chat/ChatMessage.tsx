@@ -31,7 +31,7 @@ const FileGroupDisplay: React.FC<{ content: FilesContent, onOpenFile: (file: Cod
                 <span>{content.title || 'Project Files'}</span>
             </div>
             <div className="space-y-1">
-                {content.files.map(file => (
+                {content.files && content.files.map(file => (
                     <button 
                         key={file.filename}
                         onClick={() => onOpenFile(file)}

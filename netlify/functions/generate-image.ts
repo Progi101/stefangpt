@@ -2,6 +2,7 @@ import { Handler } from '@netlify/functions';
 import { Buffer } from 'buffer';
 
 const HUGGING_FACE_API_KEY = process.env.HUGGING_FACE_API_KEY;
+// Use a faster, more lightweight model to avoid timeouts on Netlify's free tier.
 const API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5";
 
 export const handler: Handler = async (event) => {
