@@ -3,7 +3,7 @@ import React, { useState, Fragment } from 'react';
 import { ChatSession } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import Icon, { PlusIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, SettingsIcon, SunIcon, MoonIcon, XIcon, InformationCircleIcon, ChatBubbleLeftRightIcon, SparklesIcon } from '../common/Icon';
+import Icon, { PlusIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, SettingsIcon, SunIcon, MoonIcon, XIcon, InformationCircleIcon, ChatBubbleLeftRightIcon } from '../common/Icon';
 import Logo from '../common/Logo';
 
 interface HistoryPanelProps {
@@ -13,11 +13,10 @@ interface HistoryPanelProps {
   onSelectSession: (id: string) => void;
   onShowLibrary: () => void;
   onShowAbout: () => void;
-  onShowGenerator: () => void;
   onClose: () => void;
 }
 
-const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, onNewChat, onSelectSession, onShowLibrary, onShowAbout, onShowGenerator, onClose }) => {
+const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, onNewChat, onSelectSession, onShowLibrary, onShowAbout, onClose }) => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,28 +57,18 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
                 className="w-full pl-10 pr-4 py-2 text-sm text-gray-900 dark:text-white bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
             />
             </div>
-            
-            <div className='border-t border-gray-200 dark:border-gray-700 pt-4 space-y-1'>
-                 <button
-                    onClick={onShowGenerator}
-                    className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-800"
-                    >
-                    <Icon icon={SparklesIcon} className="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400" />
-                    Image Studio
-                </button>
-                <button
-                    onClick={onShowLibrary}
-                    className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-800"
-                    >
-                    <Icon icon={LibraryIcon} className="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400" />
-                    Library
-                </button>
-            </div>
+
+            <button
+            onClick={onShowLibrary}
+            className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-800"
+            >
+            <Icon icon={LibraryIcon} className="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400" />
+            Library
+            </button>
         </div>
 
         {/* Main scrollable area */}
-        <div className="flex-1 overflow-y-auto my-4 pr-1 -mr-3 border-t border-gray-200 dark:border-gray-700 pt-4">
-          <p className="px-4 pb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Recent Chats</p>
+        <div className="flex-1 overflow-y-auto my-4 pr-1 -mr-3">
           <div className="space-y-1">
             {filteredSessions.map((session) => (
               <button
