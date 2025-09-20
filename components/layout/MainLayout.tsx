@@ -13,8 +13,10 @@ import BottomNavBar from './BottomNavBar';
 import { resizeImageFromDataUrl } from '../../utils/imageUtils';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
+const SELECTED_MODEL_KEY = 'stefan_gpt_model';
 
 type ViewType = 'chat' | 'library' | 'about';
+export type AiModel = 'beta' | 'nerd';
 
 const useMediaQuery = (query: string): boolean => {
     const [matches, setMatches] = useState(() => {
@@ -49,6 +51,20 @@ const MainLayout: React.FC = () => {
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [selectedModel, setSelectedModel] = useState<AiModel>(() => 
+    (localStorage.getItem(SELECTED_MODEL_KEY) as AiModel) || 'beta'
+  );
+
+  const handleModelChange = (model: AiModel) => {
+      setSelectedModel(model);
+      localStorage.setItem(SELECTED_MODEL_KEY, model);
+  };
+
+  useEffect(() => {
+    if (isDesktop) {
+        setIsHistoryPanelOpen(false); // Ensure mobile panel is closed when switching to desktop view
+    }
+  }, [isDesktop]);
 
 
   const handleNewChat = useCallback(() => {
@@ -195,7 +211,7 @@ const MainLayout: React.FC = () => {
             for (const prefix of searchPrefixes) {
                 if (lowercasedInput.startsWith(prefix + ' ')) {
                     const searchPrompt = prompt.substring(prefix.length + 1).trim();
-                    const searchContent = await performWebSearch(searchPrompt, signal);
+                    const searchContent = await performWebSearch(searchPrompt, selectedModel, signal);
                     aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: searchContent });
                     commandMatched = true;
                     break;
@@ -223,7 +239,7 @@ const MainLayout: React.FC = () => {
         }
         
         if (!commandMatched) {
-            const responseText = await generateChatResponse(sessionWithUserMessage.messages, signal);
+            const responseText = await generateChatResponse(sessionWithUserMessage.messages, selectedModel, signal);
             const fileBlockRegex = /```json-files\s*([\s\S]*?)\s*```/s;
             const match = responseText.match(fileBlockRegex);
 
@@ -257,7 +273,7 @@ const MainLayout: React.FC = () => {
             (async () => {
                 const titleAbortController = new AbortController();
                 try {
-                    const newTitle = await generateTitleForChat(prompt, titleAbortController.signal);
+                    const newTitle = await generateTitleForChat(prompt, selectedModel, titleAbortController.signal);
                     setSessions(currentSessions => {
                         const sessionIndex = currentSessions.findIndex(s => s.id === activeSessionId);
                         if (sessionIndex > -1) {
@@ -326,7 +342,7 @@ const MainLayout: React.FC = () => {
             onClose={() => setIsHistoryPanelOpen(false)}
         />
       </div>
-      <main className={`flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden ${!isDesktop ? 'pb-16' : ''}`}>
+      <main className={`flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden ${!isDesktop ? 'pb-16' : ''} md:pl-14`}>
         {view === 'chat' && activeSession ? (
           <ChatWindow 
             key={activeSession.id} 
@@ -335,6 +351,8 @@ const MainLayout: React.FC = () => {
             onSendMessage={handleSendMessage}
             onCancelGeneration={handleCancelGeneration}
             onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
+            selectedModel={selectedModel}
+            onModelChange={handleModelChange}
           />
         ) : view === 'library' ? (
           <LibraryView sessions={sessions} onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />

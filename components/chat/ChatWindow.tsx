@@ -4,6 +4,8 @@ import { ChatSession, Message, MessageSender, CodeFile } from '../../types';
 import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon } from '../common/Icon';
 import ChatMessage, { CodeSidePanel } from './ChatMessage';
 import { resizeImageFromFile } from '../../utils/imageUtils';
+import ModelSwitcher from './ModelSwitcher';
+import { AiModel } from '../layout/MainLayout';
 
 interface ChatWindowProps {
     session: ChatSession;
@@ -11,6 +13,8 @@ interface ChatWindowProps {
     onSendMessage: (prompt: string, attachments?: { dataUrl: string; mimeType: string; }[]) => Promise<void>;
     onCancelGeneration: () => void;
     onToggleHistory: () => void;
+    selectedModel: AiModel;
+    onModelChange: (model: AiModel) => void;
 }
 
 const useMediaQuery = (query: string): boolean => {
@@ -173,7 +177,7 @@ const CameraView: React.FC<{ onCapture: (file: File) => void; onClose: () => voi
     );
 };
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onCancelGeneration, onToggleHistory }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onCancelGeneration, onToggleHistory, selectedModel, onModelChange }) => {
   const [input, setInput] = useState('');
   const [sidePanelFile, setSidePanelFile] = useState<CodeFile | null>(null);
   const [panelWidth, setPanelWidth] = useState(450);
@@ -191,20 +195,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
   const MAX_TOTAL_SIZE_MB = 5.5;
   const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_MB * 1024 * 1024;
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
-
+  
+  // Effect for auto-scrolling on new messages
   useEffect(() => {
     const lastMessage = session.messages[session.messages.length - 1];
     const wasLoading = prevIsLoadingRef.current;
     
     if (lastMessage?.sender === MessageSender.USER || (isLoading && !wasLoading)) {
-        scrollToBottom();
+        scrollToBottom('smooth');
     }
     
     prevIsLoadingRef.current = isLoading;
   }, [session.messages, isLoading]);
+
+  // Effect for scrolling to bottom on initial load / session change
+  useEffect(() => {
+    const timer = setTimeout(() => scrollToBottom('auto'), 50);
+    return () => clearTimeout(timer);
+  }, [session.id]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -370,11 +381,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
             </div>
         )}
         <div className="flex flex-col h-full flex-1 min-w-0">
-            <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center shrink-0">
-                <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400 md:hidden">
-                    <Icon icon={MenuIcon} className="w-6 h-6"/>
-                </button>
-                <h2 className="text-xl font-semibold truncate">{session.title}</h2>
+            <header className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
+                <div className="flex items-center min-w-0">
+                    <button onClick={onToggleHistory} className="p-2 -ml-2 mr-2 text-gray-500 dark:text-gray-400 md:hidden">
+                        <Icon icon={MenuIcon} className="w-6 h-6"/>
+                    </button>
+                    <h2 className="text-xl font-semibold truncate">{session.title}</h2>
+                </div>
+                <ModelSwitcher selectedModel={selectedModel} onModelChange={onModelChange} />
             </header>
             
             <div className="flex-1 overflow-y-auto p-6">

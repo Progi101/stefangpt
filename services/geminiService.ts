@@ -1,4 +1,5 @@
 import { Message, SearchResultContent } from '../types';
+import { AiModel } from '../components/layout/MainLayout';
 
 const callGeminiApi = async (type: string, payload: any, signal: AbortSignal) => {
     try {
@@ -48,17 +49,17 @@ const callGeminiApi = async (type: string, payload: any, signal: AbortSignal) =>
     }
 };
 
-export const generateChatResponse = async (messages: Message[], signal: AbortSignal): Promise<string> => {
-    const data = await callGeminiApi('chat', { messages }, signal);
+export const generateChatResponse = async (messages: Message[], model: AiModel, signal: AbortSignal): Promise<string> => {
+    const data = await callGeminiApi('chat', { messages, model }, signal);
     return data.text;
 };
 
-export const generateTitleForChat = async (prompt: string, signal: AbortSignal): Promise<string> => {
-    const data = await callGeminiApi('title', { prompt }, signal);
+export const generateTitleForChat = async (prompt: string, model: AiModel, signal: AbortSignal): Promise<string> => {
+    const data = await callGeminiApi('title', { prompt, model }, signal);
     return data.title;
 };
 
-export const performWebSearch = async (prompt: string, signal: AbortSignal): Promise<SearchResultContent> => {
-    const data = await callGeminiApi('search', { prompt }, signal);
+export const performWebSearch = async (prompt: string, model: AiModel, signal: AbortSignal): Promise<SearchResultContent> => {
+    const data = await callGeminiApi('search', { prompt, model }, signal);
     return data.result;
 };
