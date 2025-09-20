@@ -15,7 +15,7 @@ export const handler: Handler = async (event) => {
     }
 
     try {
-        const { prompt } = JSON.parse(event.body || '{}');
+        const { prompt, model } = JSON.parse(event.body || '{}'); // Model is received but not used by Stable Horde
         if (!prompt) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Prompt is required.' }) };
         }

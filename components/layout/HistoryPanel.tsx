@@ -1,10 +1,12 @@
 
+
 import React, { useState, Fragment } from 'react';
 import { ChatSession } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import Icon, { PlusIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, SettingsIcon, SunIcon, MoonIcon, XIcon, InformationCircleIcon, ChatBubbleLeftRightIcon } from '../common/Icon';
+import Icon, { PlusCircleIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, SettingsIcon, SunIcon, MoonIcon, XIcon, InformationCircleIcon, ChatBubbleLeftRightIcon } from '../common/Icon';
 import Logo from '../common/Logo';
+import { marked } from 'marked';
 
 interface HistoryPanelProps {
   sessions: ChatSession[];
@@ -30,86 +32,87 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
 
   return (
     <Fragment>
-      <aside className="w-full bg-gray-100 dark:bg-gray-900 flex flex-col p-4 border-r border-gray-200 dark:border-gray-700 h-full">
-        <div className="flex items-center justify-between shrink-0 mb-4">
-          <Logo className="[&>span]:text-xl [&>span]:text-gray-800 [&>span]:dark:text-white [&>svg]:w-8 [&>svg]:h-8 [&>svg]:text-gray-800 [&>svg]:dark:text-white" />
-          <button onClick={onClose} className="md:hidden p-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white">
+      <aside className="w-full bg-slate-100 dark:bg-slate-900 flex flex-col p-2 md:p-3 border-r border-slate-200 dark:border-slate-800 h-full overflow-hidden">
+        <div className="flex items-center justify-between shrink-0 mb-4 px-1 md:px-0">
+          <div className="flex items-center space-x-2">
+             <Logo className="[&>svg]:w-10 [&>svg]:h-10 text-slate-800 dark:text-white" />
+             <span className="text-xl font-bold md:hidden md:group-hover:block">StefanGPT</span>
+          </div>
+          <button onClick={onClose} className="md:hidden p-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
               <Icon icon={XIcon} className="w-6 h-6"/>
           </button>
         </div>
         
-        <div className="shrink-0 space-y-4">
+        <div className="shrink-0 space-y-2">
             <button
-            onClick={onNewChat}
-            className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-md hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-600 focus:outline-none"
+              onClick={onNewChat}
+              className="flex items-center w-full p-3 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-800 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 focus:outline-none"
             >
-            <Icon icon={PlusIcon} className="w-5 h-5 mr-2" />
-            New Chat
+              <Icon icon={PlusCircleIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <span className="md:hidden md:group-hover:block truncate">New Chat</span>
             </button>
-
-            <div className="relative">
-            <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-            <input
-                type="text"
-                placeholder="Search History"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm text-gray-900 dark:text-white bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-            />
+            <div className="relative md:hidden md:group-hover:block">
+              <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+              <input
+                  type="text"
+                  placeholder="Search History"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-sm text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500"
+              />
             </div>
-
             <button
-            onClick={onShowLibrary}
-            className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-600 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-800"
+              onClick={onShowLibrary}
+              className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
             >
-            <Icon icon={LibraryIcon} className="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400" />
-            Library
+              <Icon icon={LibraryIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <span className="md:hidden md:group-hover:block truncate">Library</span>
             </button>
         </div>
 
         {/* Main scrollable area */}
-        <div className="flex-1 overflow-y-auto my-4 pr-1 -mr-3 min-h-0">
+        <div className="flex-1 overflow-y-auto my-4 -mr-3 pr-2 md:hidden md:group-hover:block">
           <div className="space-y-1">
             {filteredSessions.map((session) => (
               <button
                 key={session.id}
                 onClick={() => onSelectSession(session.id)}
-                className={`w-full text-left px-4 py-2 text-sm rounded-md truncate ${
-                  session.id === activeSessionId ? 'bg-gray-800 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800'
+                className={`w-full text-left px-3 py-2 text-sm rounded-md truncate transition-colors ${
+                  session.id === activeSessionId ? 'bg-slate-700 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
                 }`}
+                dangerouslySetInnerHTML={{ __html: marked.parseInline(session.title) }}
               >
-                {session.title}
               </button>
             ))}
           </div>
         </div>
 
         {/* Footer buttons, now sticky at the bottom */}
-        <div className="shrink-0 border-t border-gray-200 dark:border-gray-700 pt-4 space-y-2">
+        <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 pt-2 space-y-1">
           <button
               onClick={onShowAbout}
-              className="flex items-center w-full p-3 text-sm text-left text-gray-800 dark:text-white bg-transparent rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
           >
-              <Icon icon={InformationCircleIcon} className="w-5 h-5 mr-3" />
-              What is StefanGPT?
+              <Icon icon={InformationCircleIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <span className="md:hidden md:group-hover:block truncate">What is StefanGPT?</span>
           </button>
           <button
               onClick={() => setIsSupportModalOpen(true)}
-              className="flex items-center w-full p-3 text-sm text-left text-gray-800 dark:text-white bg-transparent rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
           >
-              <Icon icon={ChatBubbleLeftRightIcon} className="w-5 h-5 mr-3" />
-              Support
+              <Icon icon={ChatBubbleLeftRightIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <span className="md:hidden md:group-hover:block truncate">Support</span>
           </button>
           <div className="relative">
               {isSettingsOpen && (
-                  <div className="absolute bottom-full mb-2 w-full bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700">
+                  <div className="absolute bottom-full mb-2 w-full bg-white dark:bg-slate-800 rounded-md shadow-lg border border-slate-200 dark:border-slate-700">
                       <div className="p-2">
-                          <p className="text-xs px-2 pb-1 text-gray-400">Theme</p>
+                          <p className="text-xs px-2 pb-1 text-slate-400">Theme</p>
                           <div className="flex space-x-2">
-                              <button onClick={() => setTheme('light')} className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm ${theme === 'light' ? 'bg-gray-600 text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                              <button onClick={() => setTheme('light')} className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm ${theme === 'light' ? 'bg-slate-600 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                                   <Icon icon={SunIcon} className="w-5 h-5 mr-2"/> Light
                               </button>
-                              <button onClick={() => setTheme('dark')} className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm ${theme === 'dark' ? 'bg-gray-700 text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                              <button onClick={() => setTheme('dark')} className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm ${theme === 'dark' ? 'bg-slate-700 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                                   <Icon icon={MoonIcon} className="w-5 h-5 mr-2"/> Dark
                               </button>
                           </div>
@@ -118,19 +121,18 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
               )}
               <button
                   onClick={() => { setIsSettingsOpen(!isSettingsOpen); setIsProfileOpen(false); }}
-                  className="flex items-center w-full p-3 text-sm text-left text-gray-800 dark:text-white bg-transparent rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                  className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
               >
-                  <Icon icon={SettingsIcon} className="w-5 h-5 mr-3" />
-                  <span className="truncate">Settings</span>
+                  <Icon icon={SettingsIcon} className="w-6 h-6 mr-3 shrink-0" />
+                  <span className="md:hidden md:group-hover:block truncate">Settings</span>
               </button>
           </div>
-          <div className="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
-          <div className="relative">
+           <div className="relative">
               {isProfileOpen && (
-                  <div className="absolute bottom-full mb-2 w-full bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+                  <div className="absolute bottom-full mb-2 w-full bg-white dark:bg-slate-800 rounded-md shadow-lg border border-slate-200 dark:border-slate-700 py-1">
                       <button
                           onClick={logout}
-                          className="flex items-center w-full px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 rounded-md"
+                          className="flex items-center w-full px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-slate-700 rounded-md"
                       >
                           <Icon icon={LogoutIcon} className="w-5 h-5 mr-3" />
                           Log Out
@@ -139,10 +141,10 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
               )}
               <button
                 onClick={() => { setIsProfileOpen(!isProfileOpen); setIsSettingsOpen(false); }}
-                className="flex items-center w-full p-3 text-sm text-left text-gray-800 dark:text-white bg-gray-200 dark:bg-gray-800 rounded-md hover:bg-gray-300 dark:hover:bg-gray-700"
+                className="flex items-center w-full p-3 text-sm text-left text-slate-800 dark:text-white rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
               >
-                <Icon icon={UserIcon} className="w-6 h-6 mr-3 bg-gray-400 dark:bg-gray-600 p-1 rounded-full" />
-                <span className="truncate">{user?.username}</span>
+                <Icon icon={UserIcon} className="w-6 h-6 mr-3 shrink-0" />
+                <span className="md:hidden md:group-hover:block truncate">{user?.username}</span>
               </button>
           </div>
         </div>

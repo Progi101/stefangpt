@@ -1,7 +1,8 @@
 
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatSession, Message, MessageSender, CodeFile } from '../../types';
-import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon, FourPointSparkleIcon } from '../common/Icon';
+import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon, PlusCircleIcon } from '../common/Icon';
 import ChatMessage, { CodeSidePanel } from './ChatMessage';
 import { resizeImageFromFile } from '../../utils/imageUtils';
 import ModelSwitcher from './ModelSwitcher';
@@ -414,7 +415,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMess
                                             <path d="M12 2.75C17.108 2.75 21.25 6.892 21.25 12C21.25 17.108 17.108 21.25 12 21.25C6.892 21.25 2.75 17.108 2.75 12C2.75 7.844 5.922 4.103 10 3.066"
                                                   stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                                         </svg>
-                                         <Icon icon={FourPointSparkleIcon} className="w-3.5 h-3.5 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                         <Icon icon={PlusCircleIcon} className="w-3.5 h-3.5 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                                     </div>
                                     <span className="font-medium">{loadingMessage || 'Thinking...'}</span>
                                 </div>

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import HistoryPanel from './HistoryPanel';
 import ChatWindow from '../chat/ChatWindow';
@@ -255,7 +256,7 @@ const MainLayout: React.FC = () => {
                 for (const prefix of imagePrefixes) {
                     if (lowercasedInput.startsWith(prefix + ' ')) {
                         const imagePrompt = prompt.substring(prefix.length + 1).trim();
-                        let imageUrl = await generateImage(imagePrompt, signal);
+                        let imageUrl = await generateImage(imagePrompt, selectedModel, signal);
 
                         try {
                             const resizedDataUrl = await resizeImageFromDataUrl(imageUrl);
@@ -362,10 +363,13 @@ const MainLayout: React.FC = () => {
           ></div>
       )}
       <div className={`
-        w-4/5 sm:w-80 md:w-64 h-full shrink-0
-        fixed z-30 transition-transform duration-300 ease-in-out
-        md:hover:translate-x-0
-        ${isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-[-calc(100%-3.5rem)]'}
+          group
+          fixed md:relative h-full shrink-0 z-30
+          w-4/5 sm:w-80 
+          bg-slate-100 dark:bg-slate-900
+          transition-all duration-300 ease-in-out
+          md:w-14 md:hover:w-64
+          ${isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <HistoryPanel
             sessions={sessions}
@@ -377,7 +381,7 @@ const MainLayout: React.FC = () => {
             onClose={() => setIsHistoryPanelOpen(false)}
         />
       </div>
-      <main className={`flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden ${!isDesktop ? 'pb-16' : ''} md:pl-14`}>
+      <main className={`flex-1 flex flex-col bg-white dark:bg-gray-800 overflow-hidden ${!isDesktop ? 'pb-16' : ''}`}>
         {view === 'chat' && activeSession ? (
           <ChatWindow 
             key={activeSession.id} 

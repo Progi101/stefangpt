@@ -1,14 +1,16 @@
 // A Netlify Function will handle the actual API call to the image service.
 // This service just calls our own backend function.
 
-export const generateImage = async (prompt: string, signal: AbortSignal): Promise<string> => {
+import { AiModel } from "../components/layout/MainLayout";
+
+export const generateImage = async (prompt: string, model: AiModel, signal: AbortSignal): Promise<string> => {
     try {
         const response = await fetch('/.netlify/functions/generate-image', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt }),
+            body: JSON.stringify({ prompt, model }),
             signal, // Pass the signal to the fetch request
         });
 
