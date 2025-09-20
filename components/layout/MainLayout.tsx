@@ -5,7 +5,7 @@ import ChatWindow from '../chat/ChatWindow';
 import LibraryView from '../library/LibraryView';
 import AboutPage from '../about/AboutPage';
 import { ChatSession, Message, MessageSender, MessageContent } from '../../types';
-import { getChatSessionMetadatas, saveChatSession, getChatSession, getAllChatSessions } from '../../services/storageService';
+import { getChatSessions, saveChatSessions } from '../../services/storageService';
 import Icon, { MenuIcon } from '../common/Icon';
 import { generateChatResponse, generateTitleForChat, performWebSearch } from '../../services/geminiService';
 import { generateImage } from '../../services/imageService';
@@ -15,7 +15,6 @@ import { resizeImageFromDataUrl } from '../../utils/imageUtils';
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
 
 type ViewType = 'chat' | 'library' | 'about';
-type SessionMeta = Pick<ChatSession, 'id' | 'title' | 'createdAt'>;
 
 const useMediaQuery = (query: string): boolean => {
     const [matches, setMatches] = useState(() => {
@@ -27,26 +26,35 @@ const useMediaQuery = (query: string): boolean => {
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
+
         const media = window.matchMedia(query);
         const listener = () => setMatches(media.matches);
+        
         if (media.matches !== matches) {
             setMatches(media.matches);
         }
+
         media.addEventListener('change', listener);
         return () => media.removeEventListener('change', listener);
     }, [matches, query]);
+
     return matches;
 };
 
 const MainLayout: React.FC = () => {
-  const [sessionMetas, setSessionMetas] = useState<SessionMeta[]>([]);
-  const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
-  const [librarySessions, setLibrarySessions] = useState<ChatSession[] | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>('chat');
   const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false); // Default to closed on mobile
+  const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+        return window.innerWidth >= 768;
+    }
+    return false;
+  });
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const abortControllerRef = useRef<AbortController | null>(null);
+
 
   const handleNewChat = useCallback(() => {
     const initialMessage: Message = {
@@ -57,42 +65,40 @@ const MainLayout: React.FC = () => {
         text: 'I am StefanGPT, your personal AI assistant. How can I help you today?',
       },
     };
+
     const newSession: ChatSession = {
       id: Date.now().toString(),
       title: 'New Chat',
       messages: [initialMessage],
       createdAt: Date.now(),
     };
-    saveChatSession(newSession);
-    setSessionMetas(prev => [{id: newSession.id, title: newSession.title, createdAt: newSession.createdAt}, ...prev]);
-    setActiveSession(newSession);
+    
+    setSessions(prevSessions => {
+      const updatedSessions = [newSession, ...prevSessions];
+      saveChatSessions(updatedSessions);
+      return updatedSessions;
+    });
+
+    setActiveSessionId(newSession.id);
     sessionStorage.setItem(ACTIVE_SESSION_ID_KEY, newSession.id);
     setView('chat');
-    if (!isDesktop) setIsHistoryPanelOpen(false);
-  }, [isDesktop]);
+    if (window.innerWidth < 768) {
+      setIsHistoryPanelOpen(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadedMetas = getChatSessionMetadatas();
-    setSessionMetas(loadedMetas);
+    const loadedSessions = getChatSessions();
+    setSessions(loadedSessions);
+
     const lastActiveId = sessionStorage.getItem(ACTIVE_SESSION_ID_KEY);
     
-    if (lastActiveId && loadedMetas.some(s => s.id === lastActiveId)) {
-        const session = getChatSession(lastActiveId);
-        if (session) {
-            setActiveSession(session);
-            setView('chat');
-        } else { // Handle case where session ID is invalid/deleted
-             sessionStorage.removeItem(ACTIVE_SESSION_ID_KEY);
-             if (loadedMetas.length > 0) {
-                const mostRecentSession = getChatSession(loadedMetas[0].id);
-                setActiveSession(mostRecentSession || null);
-             } else {
-                 handleNewChat();
-             }
-        }
-    } else if (loadedMetas.length > 0) {
-        const mostRecentSessionId = loadedMetas[0].id;
-        setActiveSession(getChatSession(mostRecentSessionId) || null);
+    if (lastActiveId && loadedSessions.some(s => s.id === lastActiveId)) {
+        setActiveSessionId(lastActiveId);
+        setView('chat');
+    } else if (loadedSessions.length > 0) {
+        const mostRecentSessionId = loadedSessions[0].id;
+        setActiveSessionId(mostRecentSessionId);
         sessionStorage.setItem(ACTIVE_SESSION_ID_KEY, mostRecentSessionId);
         setView('chat');
     } else {
@@ -100,62 +106,51 @@ const MainLayout: React.FC = () => {
     }
   }, [handleNewChat]);
 
-  useEffect(() => {
-      if (view === 'library' && librarySessions === null) {
-          // Load all sessions for the library view when it's opened
-          setLibrarySessions(getAllChatSessions());
-      } else if (view !== 'library' && librarySessions !== null) {
-          // Unload sessions when leaving library view to free up memory
-          setLibrarySessions(null);
-      }
-  }, [view, librarySessions]);
-
-
   const handleSessionUpdate = useCallback((updatedSession: ChatSession) => {
-    // Update active session in state
-    setActiveSession(updatedSession);
-    
-    // Persist change to storage
-    saveChatSession(updatedSession);
-
-    // Update the metadata list in state
-    setSessionMetas(currentMetas => {
-        const metaIndex = currentMetas.findIndex(m => m.id === updatedSession.id);
-        const newMeta = { id: updatedSession.id, title: updatedSession.title, createdAt: updatedSession.createdAt };
-        let newMetas;
-        if (metaIndex > -1) {
-            newMetas = [...currentMetas];
-            newMetas[metaIndex] = newMeta;
+    setSessions(currentSessions => {
+        const sessionIndex = currentSessions.findIndex(s => s.id === updatedSession.id);
+        let newSessions;
+        if (sessionIndex > -1) {
+            newSessions = [...currentSessions];
+            newSessions[sessionIndex] = updatedSession;
         } else {
-            newMetas = [newMeta, ...currentMetas];
+            // This case should not happen often with the current logic, but it's a safeguard
+            newSessions = [updatedSession, ...currentSessions];
         }
-        // Ensure updated session is at the top
-        return [newMeta, ...newMetas.filter(m => m.id !== updatedSession.id)];
+
+        // Ensure the updated session is always at the top
+        const finalSessions = [updatedSession, ...newSessions.filter(s => s.id !== updatedSession.id)];
+        saveChatSessions(finalSessions);
+        return finalSessions;
     });
   }, []);
 
+
   const handleSelectSession = (id: string) => {
-    const session = getChatSession(id);
-    if (session) {
-      setActiveSession(session);
-      sessionStorage.setItem(ACTIVE_SESSION_ID_KEY, id);
-      setView('chat');
-      if (!isDesktop) setIsHistoryPanelOpen(false);
+    setActiveSessionId(id);
+    sessionStorage.setItem(ACTIVE_SESSION_ID_KEY, id);
+    setView('chat');
+    if (window.innerWidth < 768) {
+      setIsHistoryPanelOpen(false);
     }
   };
 
   const handleShowLibrary = () => {
       setView('library');
-      setActiveSession(null);
+      setActiveSessionId(null);
       sessionStorage.removeItem(ACTIVE_SESSION_ID_KEY);
-      if (!isDesktop) setIsHistoryPanelOpen(false);
+      if (window.innerWidth < 768) {
+        setIsHistoryPanelOpen(false);
+      }
   };
 
   const handleShowAbout = () => {
       setView('about');
-      setActiveSession(null);
+      setActiveSessionId(null);
       sessionStorage.removeItem(ACTIVE_SESSION_ID_KEY);
-      if (!isDesktop) setIsHistoryPanelOpen(false);
+      if (window.innerWidth < 768) {
+        setIsHistoryPanelOpen(false);
+      }
   };
   
   const handleCancelGeneration = () => {
@@ -167,6 +162,9 @@ const MainLayout: React.FC = () => {
   };
 
   const handleSendMessage = async (prompt: string, attachments?: { dataUrl: string; mimeType: string }[]) => {
+    if (!activeSessionId) return;
+
+    const activeSession = sessions.find(s => s.id === activeSessionId);
     if (!activeSession) return;
     
     const userMessageContent: MessageContent = (attachments && attachments.length > 0)
@@ -186,6 +184,7 @@ const MainLayout: React.FC = () => {
     handleSessionUpdate(sessionWithUserMessage);
     setIsLoading(true);
     
+    // Create and store the AbortController for this specific request
     abortControllerRef.current = new AbortController();
     const { signal } = abortControllerRef.current;
     
@@ -212,11 +211,14 @@ const MainLayout: React.FC = () => {
                     if (lowercasedInput.startsWith(prefix + ' ')) {
                         const imagePrompt = prompt.substring(prefix.length + 1).trim();
                         let imageUrl = await generateImage(imagePrompt, signal);
+
                         try {
-                            imageUrl = await resizeImageFromDataUrl(imageUrl);
+                            const resizedDataUrl = await resizeImageFromDataUrl(imageUrl);
+                            imageUrl = resizedDataUrl;
                         } catch (resizeError) {
                             console.warn("Could not resize AI-generated image, using original.", resizeError);
                         }
+
                         aiMessages.push({ id: (Date.now() + 1).toString(), sender: MessageSender.AI, content: { type: 'image', imageUrl, prompt: imagePrompt } });
                         commandMatched = true;
                         break;
@@ -229,6 +231,7 @@ const MainLayout: React.FC = () => {
             const responseText = await generateChatResponse(sessionWithUserMessage.messages, signal);
             const fileBlockRegex = /```json-files\s*([\s\S]*?)\s*```/s;
             const match = responseText.match(fileBlockRegex);
+
             if (match && match[1]) {
                 try {
                     const explanationText = responseText.replace(fileBlockRegex, '').trim();
@@ -260,10 +263,16 @@ const MainLayout: React.FC = () => {
                 const titleAbortController = new AbortController();
                 try {
                     const newTitle = await generateTitleForChat(prompt, titleAbortController.signal);
-                    const sessionToUpdate = getChatSession(sessionWithUserMessage.id);
-                    if (sessionToUpdate) {
-                       handleSessionUpdate({ ...sessionToUpdate, title: newTitle });
-                    }
+                    setSessions(currentSessions => {
+                        const sessionIndex = currentSessions.findIndex(s => s.id === activeSessionId);
+                        if (sessionIndex > -1) {
+                            const newSessions = [...currentSessions];
+                            newSessions[sessionIndex] = { ...newSessions[sessionIndex], title: newTitle };
+                            saveChatSessions(newSessions);
+                            return newSessions;
+                        }
+                        return currentSessions;
+                    });
                 } catch (error) {
                     if ((error as Error).name !== 'AbortError') {
                        console.error("Title generation failed:", error);
@@ -273,7 +282,13 @@ const MainLayout: React.FC = () => {
         }
 
     } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
+        if (error instanceof Error && error.name === 'AbortError') {
+            console.log("Request was cancelled by the user.");
+            // Don't show an error message in the chat for user-initiated cancellations.
+            // The loading state is already handled by the cancel handler and finally block.
+            return;
+        }
+
         console.error("Error processing AI response:", error);
         const errorMessageText = error instanceof Error ? error.message : "An unknown error occurred. Please try again.";
         const errorMessage: Message = {
@@ -289,6 +304,8 @@ const MainLayout: React.FC = () => {
     }
   };
   
+  const activeSession = activeSessionId ? sessions.find(s => s.id === activeSessionId) : undefined;
+
   return (
     <div className="flex h-screen relative overflow-hidden">
       {isHistoryPanelOpen && !isDesktop && (
@@ -299,13 +316,13 @@ const MainLayout: React.FC = () => {
           ></div>
       )}
       <div className={`
-        group shrink-0 transition-all duration-300 ease-in-out
-        md:w-20 md:hover:w-64 md:relative fixed z-30
-        ${isHistoryPanelOpen ? 'translate-x-0 w-4/5 sm:w-80' : '-translate-x-full w-4/5 sm:w-80 md:w-20'}
+        w-4/5 sm:w-80 md:w-64 h-full shrink-0 transform transition-all duration-300 ease-in-out
+        fixed md:static z-30
+        ${isHistoryPanelOpen ? 'translate-x-0' : '-translate-x-full md:ml-[-16rem]'}
       `}>
         <HistoryPanel
-            sessions={sessionMetas}
-            activeSessionId={activeSession?.id ?? null}
+            sessions={sessions}
+            activeSessionId={activeSessionId}
             onNewChat={handleNewChat}
             onSelectSession={handleSelectSession}
             onShowLibrary={handleShowLibrary}
@@ -324,7 +341,7 @@ const MainLayout: React.FC = () => {
             onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
           />
         ) : view === 'library' ? (
-          <LibraryView sessions={librarySessions} onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />
+          <LibraryView sessions={sessions} onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />
         ) : view === 'about' ? (
            <AboutPage onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)} />
         ) : (
