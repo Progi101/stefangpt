@@ -31,7 +31,7 @@ const FileGroupDisplay: React.FC<{ content: FilesContent, onOpenFile: (file: Cod
                 <span>{content.title || 'Project Files'}</span>
             </div>
             <div className="space-y-1">
-                {content.files && content.files.map(file => (
+                {content.files.map(file => (
                     <button 
                         key={file.filename}
                         onClick={() => onOpenFile(file)}
@@ -152,7 +152,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
             case 'user-query':
                 return (
                     <div className="space-y-3" ref={messageRef}>
-                        {content.imageUrls && content.imageUrls.length > 0 && (
+                        {content.imageUrls.length > 0 && (
                             <div className={`grid gap-2 grid-cols-1 ${content.imageUrls.length > 1 ? 'sm:grid-cols-2' : ''}`}>
                                 {content.imageUrls.map((url, index) => (
                                     <img 
@@ -181,7 +181,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onOpenFile }) => {
                 return (
                     <div ref={messageRef}>
                         <div className="whitespace-pre-wrap markdown-content" dangerouslySetInnerHTML={{ __html: typeof marked !== 'undefined' ? marked.parse(content.text, { breaks: true, gfm: true }) : content.text.replace(/\n/g, '<br/>') }}></div>
-                        {content.citations && content.citations.length > 0 && (
+                        {content.citations.length > 0 && (
                             <div className="mt-4 pt-2 border-t border-gray-200 dark:border-gray-700">
                                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Sources:</h4>
                                 <ul className="space-y-1">
