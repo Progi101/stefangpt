@@ -185,7 +185,7 @@ export const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) 
 
 export const LogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path fillRule="evenodd" clipRule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM9.5 13C10.3284 13 11 12.3284 11 11.5C11 10.6716 10.3284 10 9.5 10C8.67157 10 8 10.6716 8 11.5C8 12.3284 8.67157 13 9.5 13ZM16 11.5C16 12.3284 15.3284 13 14.5 13C13.6716 13 13 12.3284 13 11.5C13 10.6716 13.6716 10 14.5 10C15.3284 10 16 10.6716 16 11.5Z"/>
+        <path fillRule="evenodd" d="M12 2 C19 2 22 5 22 12 C22 19 19 22 12 22 C5 22 2 19 2 12 C2 5 5 2 12 2 Z M8.5 10.5 L8.5 11 L8 11 L8 12 L8.5 12 L8.5 12.5 L9.5 12.5 L9.5 12 L10 12 L10 11 L9.5 11 L9.5 10.5 L8.5 10.5 Z M14.5 10.5 L14.5 11 L14 11 L14 12 L14.5 12 L14.5 12.5 L15.5 12.5 L15.5 12 L16 12 L16 11 L15.5 11 L15.5 10.5 L14.5 10.5 Z" />
     </svg>
 );
 

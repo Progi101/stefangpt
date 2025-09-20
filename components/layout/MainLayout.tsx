@@ -83,7 +83,7 @@ const MainLayout: React.FC = () => {
       if (activeSessionId) {
         const activeSession = sessions.find(s => s.id === activeSessionId);
         if (activeSession) {
-            const modelName = model === 'beta' ? 'StefanGPT Beta' : 'nerd';
+            const modelName = model === 'beta' ? 'StefanGPT Beta' : 'StefanGPT Nerd';
             const notificationMessage: Message = {
                 id: `${Date.now()}-system-notification`,
                 sender: MessageSender.AI,
