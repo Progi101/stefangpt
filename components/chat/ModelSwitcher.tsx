@@ -8,8 +8,8 @@ interface ModelSwitcherProps {
 }
 
 const modelOptions: { id: AiModel, name: string, description: string }[] = [
-    { id: 'beta', name: 'StefanGPT Beta', description: 'Ajutor rapid și complet' },
-    { id: 'nerd', name: 'StefanGPT Nerd', description: 'Raționament, calcul matematic și programare' },
+    { id: 'beta', name: 'StefanGPT Beta', description: 'Quick and complete help' },
+    { id: 'nerd', name: 'StefanGPT Nerd', description: 'Reasoning, math, and programming' },
 ];
 
 const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ selectedModel, onModelChange }) => {
@@ -46,7 +46,7 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ selectedModel, onModelCha
             {isOpen && (
                 <div className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-10">
                     <div className="p-2">
-                        <p className="px-2 pb-1 text-sm text-gray-500 dark:text-gray-400">Alege modelul</p>
+                        <p className="px-2 pb-1 text-sm text-gray-500 dark:text-gray-400">Choose model</p>
                         {modelOptions.map(option => (
                             <button
                                 key={option.id}

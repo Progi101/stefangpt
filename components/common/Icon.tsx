@@ -102,6 +102,12 @@ export const SparklesIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
     </svg>
 );
 
+export const FourPointSparkleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg {...props} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 0L13.5 10.5L24 12L13.5 13.5L12 24L10.5 13.5L0 12L10.5 10.5L12 0Z" />
+  </svg>
+);
+
 export const GlobeAltIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c.504 0 1.002-.016 1.493-.046M12 21c-.504 0-1.002-.016-1.493-.046M12 3a9.004 9.004 0 0 0-8.716 6.747M12 3a9.004 9.004 0 0 1 8.716 6.747M12 3c.504 0 1.002-.016 1.493-.046M12 3c-.504 0-1.002-.016-1.493-.046M12 12a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6Zm-3 6a3 3 0 1 0 6 0 3 3 0 1 0-6 0Z" />

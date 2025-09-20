@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatSession, Message, MessageSender, CodeFile } from '../../types';
-import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon } from '../common/Icon';
+import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon, FourPointSparkleIcon } from '../common/Icon';
 import ChatMessage, { CodeSidePanel } from './ChatMessage';
 import { resizeImageFromFile } from '../../utils/imageUtils';
 import ModelSwitcher from './ModelSwitcher';
@@ -10,6 +10,7 @@ import { AiModel } from '../layout/MainLayout';
 interface ChatWindowProps {
     session: ChatSession;
     isLoading: boolean;
+    loadingMessage: string;
     onSendMessage: (prompt: string, attachments?: { dataUrl: string; mimeType: string; }[]) => Promise<void>;
     onCancelGeneration: () => void;
     onToggleHistory: () => void;
@@ -177,7 +178,7 @@ const CameraView: React.FC<{ onCapture: (file: File) => void; onClose: () => voi
     );
 };
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessage, onCancelGeneration, onToggleHistory, selectedModel, onModelChange }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMessage, onSendMessage, onCancelGeneration, onToggleHistory, selectedModel, onModelChange }) => {
   const [input, setInput] = useState('');
   const [sidePanelFile, setSidePanelFile] = useState<CodeFile | null>(null);
   const [panelWidth, setPanelWidth] = useState(450);
@@ -407,12 +408,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, onSendMessa
                         {session.messages.map(message => <ChatMessage key={message.id} message={message} onOpenFile={setSidePanelFile} />)}
                         {isLoading && (
                             <div className="flex items-start gap-4">
-                                <div className="max-w-xl px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></span>
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.15s' }}></span>
-                                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></span>
+                                <div className="flex items-center gap-3 max-w-xl px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
+                                    <div className="relative w-6 h-6 shrink-0">
+                                        <svg className="w-full h-full animate-spin text-blue-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 2.75C17.108 2.75 21.25 6.892 21.25 12C21.25 17.108 17.108 21.25 12 21.25C6.892 21.25 2.75 17.108 2.75 12C2.75 7.844 5.922 4.103 10 3.066"
+                                                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                         <Icon icon={FourPointSparkleIcon} className="w-3.5 h-3.5 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                                     </div>
+                                    <span className="font-medium">{loadingMessage || 'Thinking...'}</span>
                                 </div>
                             </div>
                         )}

@@ -48,6 +48,7 @@ const MainLayout: React.FC = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [view, setView] = useState<ViewType>('chat');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -55,9 +56,48 @@ const MainLayout: React.FC = () => {
     (localStorage.getItem(SELECTED_MODEL_KEY) as AiModel) || 'beta'
   );
 
+  const handleSessionUpdate = useCallback((updatedSession: ChatSession) => {
+    setSessions(currentSessions => {
+        const sessionIndex = currentSessions.findIndex(s => s.id === updatedSession.id);
+        let newSessions;
+        if (sessionIndex > -1) {
+            newSessions = [...currentSessions];
+            newSessions[sessionIndex] = updatedSession;
+        } else {
+            // This case should not happen often with the current logic, but it's a safeguard
+            newSessions = [updatedSession, ...currentSessions];
+        }
+
+        // Ensure the updated session is always at the top
+        const finalSessions = [updatedSession, ...newSessions.filter(s => s.id !== updatedSession.id)];
+        saveChatSessions(finalSessions);
+        return finalSessions;
+    });
+  }, []);
+
   const handleModelChange = (model: AiModel) => {
       setSelectedModel(model);
       localStorage.setItem(SELECTED_MODEL_KEY, model);
+
+      if (activeSessionId) {
+        const activeSession = sessions.find(s => s.id === activeSessionId);
+        if (activeSession) {
+            const modelName = model === 'beta' ? 'StefanGPT Beta' : 'StefanGPT Nerd';
+            const notificationMessage: Message = {
+                id: `${Date.now()}-system-notification`,
+                sender: MessageSender.AI,
+                content: {
+                    type: 'text',
+                    text: `*You have switched to ${modelName}.*`
+                },
+            };
+            const updatedSession = {
+                ...activeSession,
+                messages: [...activeSession.messages, notificationMessage],
+            };
+            handleSessionUpdate(updatedSession);
+        }
+    }
   };
 
   useEffect(() => {
@@ -117,25 +157,6 @@ const MainLayout: React.FC = () => {
     }
   }, [handleNewChat]);
 
-  const handleSessionUpdate = useCallback((updatedSession: ChatSession) => {
-    setSessions(currentSessions => {
-        const sessionIndex = currentSessions.findIndex(s => s.id === updatedSession.id);
-        let newSessions;
-        if (sessionIndex > -1) {
-            newSessions = [...currentSessions];
-            newSessions[sessionIndex] = updatedSession;
-        } else {
-            // This case should not happen often with the current logic, but it's a safeguard
-            newSessions = [updatedSession, ...currentSessions];
-        }
-
-        // Ensure the updated session is always at the top
-        const finalSessions = [updatedSession, ...newSessions.filter(s => s.id !== updatedSession.id)];
-        saveChatSessions(finalSessions);
-        return finalSessions;
-    });
-  }, []);
-
 
   const handleSelectSession = (id: string) => {
     setActiveSessionId(id);
@@ -169,6 +190,7 @@ const MainLayout: React.FC = () => {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
         setIsLoading(false);
+        setLoadingMessage('');
     }
   };
 
@@ -178,6 +200,17 @@ const MainLayout: React.FC = () => {
     const activeSession = sessions.find(s => s.id === activeSessionId);
     if (!activeSession) return;
     
+    const getThinkingMessage = (prompt: string): string => {
+        const p = prompt.toLowerCase();
+        if (p.startsWith('generate ') || p.startsWith('create ') || p.startsWith('draw ') || p.startsWith('image of')) return "Painting with pixels...";
+        if (p.includes('code') || p.includes('script') || p.includes('function') || p.includes('program')) return "Compiling the perfect solution...";
+        if (p.includes('write') || p.includes('poem') || p.includes('story') || p.includes('essay')) return "Composing a masterpiece...";
+        if (p.startsWith('search ') || p.startsWith('find ') || p.startsWith('google ')) return "Searching the web for answers...";
+        if (p.includes('explain') || p.includes('what is') || p.includes('how does')) return "Consulting my knowledge banks...";
+        const options = ["Thinking...", "Processing your request...", "Just a moment...", "Working on it..."];
+        return options[Math.floor(Math.random() * options.length)];
+    };
+
     const userMessageContent: MessageContent = (attachments && attachments.length > 0)
       ? { type: 'user-query', text: prompt, imageUrls: attachments.map(a => a.dataUrl) }
       : { type: 'text', text: prompt };
@@ -193,6 +226,7 @@ const MainLayout: React.FC = () => {
       messages: [...activeSession.messages, userMessage],
     };
     handleSessionUpdate(sessionWithUserMessage);
+    setLoadingMessage(getThinkingMessage(prompt));
     setIsLoading(true);
     
     // Create and store the AbortController for this specific request
@@ -311,6 +345,7 @@ const MainLayout: React.FC = () => {
         handleSessionUpdate(sessionWithError);
     } finally {
         setIsLoading(false);
+        setLoadingMessage('');
         abortControllerRef.current = null;
     }
   };
@@ -348,6 +383,7 @@ const MainLayout: React.FC = () => {
             key={activeSession.id} 
             session={activeSession} 
             isLoading={isLoading}
+            loadingMessage={loadingMessage}
             onSendMessage={handleSendMessage}
             onCancelGeneration={handleCancelGeneration}
             onToggleHistory={() => setIsHistoryPanelOpen(!isHistoryPanelOpen)}
