@@ -1,4 +1,4 @@
-import { User, ChatSession, TextContent } from '../types';
+import { User, ChatSession } from '../types';
 
 const USERS_KEY = 'stefan_gpt_users';
 const CURRENT_USER_KEY = 'stefan_gpt_current_user';
@@ -102,50 +102,19 @@ export const getChatSessions = (): ChatSession[] => {
 
 export const saveChatSessions = (sessions: ChatSession[]): void => {
   const key = getChatsKeyForCurrentUser();
-  if(!key) return;
+  if (!key) return;
 
-  // Sanitize sessions to prevent storing large image data that exceeds localStorage quota.
-  // This replaces image content with a text placeholder for long-term storage,
-  // preventing the "QuotaExceededError" crash. The in-memory state will still
-  // show images for the current session.
-  const sanitizedSessions = sessions.map(session => ({
-      ...session,
-      messages: session.messages.map(message => {
-          if (message.content.type === 'image') {
-              return {
-                  ...message,
-                  content: {
-                      type: 'text',
-                      text: `[AI generated an image for prompt: "${message.content.prompt}"]`
-                  } as TextContent
-              };
-          }
-          if (message.content.type === 'user-query' && message.content.imageUrls.length > 0) {
-              return {
-                  ...message,
-                  content: {
-                      type: 'text',
-                      text: message.content.text 
-                            ? `[User sent ${message.content.imageUrls.length} image(s) with prompt: "${message.content.text}"]`
-                            : `[User sent ${message.content.imageUrls.length} image(s)]`
-                  } as TextContent
-              };
-          }
-          return message;
-      })
-  }));
-
+  // By removing sanitization, full image data is now stored in localStorage.
+  // This allows images to persist across sessions, but may lead to quota
+  // issues with extensive image history, potentially causing crashes.
   try {
-    localStorage.setItem(key, JSON.stringify(sanitizedSessions));
+    localStorage.setItem(key, JSON.stringify(sessions));
   } catch (error) {
-    // FIX: Removed the re-throwing of errors. A failure to save to localStorage
-    // should not crash the entire application. The in-memory state will persist
-    // for the current session. This prevents crashes during image generation/upload.
     console.error("Failed to save chat sessions to localStorage. The current session will remain available, but history may not be saved.", error);
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         console.warn(
             "LocalStorage quota exceeded. Chat history may not be fully saved. " +
-            "This can happen with very long conversations even after image sanitization."
+            "This can happen with very long conversations or many high-resolution images."
         );
     }
   }
