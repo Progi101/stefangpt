@@ -8,8 +8,8 @@ interface ModelSwitcherProps {
 }
 
 const modelOptions: { id: AiModel, name: string, description: string }[] = [
-    { id: 'beta', name: 'StefanGPT Beta', description: 'Quick and complete help' },
-    { id: 'nerd', name: 'nerd', description: 'Reasoning, math, and programming' },
+    { id: 'beta', name: 'StefanGPT Beta', description: 'Creative, witty, and helpful.' },
+    { id: 'nerd', name: 'StefanGPT Nerd', description: 'Deep reasoning, math, and code.' },
 ];
 
 const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ selectedModel, onModelChange }) => {

@@ -34,10 +34,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
     <Fragment>
       <aside className="w-full bg-slate-100 dark:bg-slate-900 flex flex-col p-2 md:p-3 border-r border-slate-200 dark:border-slate-800 h-full overflow-hidden">
         <div className="flex items-center justify-between shrink-0 mb-4 px-1 md:px-0">
-          <div className="flex items-center space-x-2">
-             <Logo className="[&>svg]:w-10 [&>svg]:h-10 text-slate-800 dark:text-white" />
-             <span className="text-xl font-bold md:hidden md:group-hover:block">StefanGPT</span>
-          </div>
+          <Logo className="[&>svg]:w-10 [&>svg]:h-10 text-slate-800 dark:text-white" />
           <button onClick={onClose} className="md:hidden p-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white">
               <Icon icon={XIcon} className="w-6 h-6"/>
           </button>
@@ -46,9 +43,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
         <div className="shrink-0 space-y-2">
             <button
               onClick={onNewChat}
-              className="flex items-center w-full p-3 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-800 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 focus:outline-none"
+              className="flex items-center justify-center md:group-hover:justify-start w-full p-3 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-200 dark:bg-slate-800 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-700 focus:outline-none"
             >
-              <Icon icon={PlusCircleIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <Icon icon={PlusCircleIcon} className="w-6 h-6 md:group-hover:mr-3 shrink-0" />
               <span className="md:hidden md:group-hover:block truncate">New Chat</span>
             </button>
             <div className="relative md:hidden md:group-hover:block">
@@ -63,9 +60,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
             </div>
             <button
               onClick={onShowLibrary}
-              className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+              className="flex items-center justify-center md:group-hover:justify-start w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
             >
-              <Icon icon={LibraryIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <Icon icon={LibraryIcon} className="w-6 h-6 md:group-hover:mr-3 shrink-0" />
               <span className="md:hidden md:group-hover:block truncate">Library</span>
             </button>
         </div>
@@ -91,16 +88,16 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
         <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 pt-2 space-y-1">
           <button
               onClick={onShowAbout}
-              className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+              className="flex items-center justify-center md:group-hover:justify-start w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
           >
-              <Icon icon={InformationCircleIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <Icon icon={InformationCircleIcon} className="w-6 h-6 md:group-hover:mr-3 shrink-0" />
               <span className="md:hidden md:group-hover:block truncate">What is StefanGPT?</span>
           </button>
           <button
               onClick={() => setIsSupportModalOpen(true)}
-              className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+              className="flex items-center justify-center md:group-hover:justify-start w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
           >
-              <Icon icon={ChatBubbleLeftRightIcon} className="w-6 h-6 mr-3 shrink-0" />
+              <Icon icon={ChatBubbleLeftRightIcon} className="w-6 h-6 md:group-hover:mr-3 shrink-0" />
               <span className="md:hidden md:group-hover:block truncate">Support</span>
           </button>
           <div className="relative">
@@ -121,9 +118,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
               )}
               <button
                   onClick={() => { setIsSettingsOpen(!isSettingsOpen); setIsProfileOpen(false); }}
-                  className="flex items-center w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+                  className="flex items-center justify-center md:group-hover:justify-start w-full p-3 text-sm text-left text-slate-600 dark:text-slate-300 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
               >
-                  <Icon icon={SettingsIcon} className="w-6 h-6 mr-3 shrink-0" />
+                  <Icon icon={SettingsIcon} className="w-6 h-6 md:group-hover:mr-3 shrink-0" />
                   <span className="md:hidden md:group-hover:block truncate">Settings</span>
               </button>
           </div>
@@ -141,9 +138,9 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
               )}
               <button
                 onClick={() => { setIsProfileOpen(!isProfileOpen); setIsSettingsOpen(false); }}
-                className="flex items-center w-full p-3 text-sm text-left text-slate-800 dark:text-white rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
+                className="flex items-center justify-center md:group-hover:justify-start w-full p-3 text-sm text-left text-slate-800 dark:text-white rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
               >
-                <Icon icon={UserIcon} className="w-6 h-6 mr-3 shrink-0" />
+                <Icon icon={UserIcon} className="w-6 h-6 md:group-hover:mr-3 shrink-0" />
                 <span className="md:hidden md:group-hover:block truncate">{user?.username}</span>
               </button>
           </div>
