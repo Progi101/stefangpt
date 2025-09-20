@@ -1,11 +1,10 @@
 import React from 'react';
-import Icon, { PlusIcon, LibraryIcon, MenuIcon, UserIcon } from '../common/Icon';
+import Icon, { PlusIcon, LibraryIcon, MenuIcon } from '../common/Icon';
 
 interface BottomNavBarProps {
   onNewChat: () => void;
   onShowLibrary: () => void;
   onToggleHistory: () => void;
-  onShowProfile: () => void;
   activeView: 'chat' | 'library' | 'about';
 }
 
@@ -28,7 +27,7 @@ const NavButton: React.FC<{
 };
 
 
-const BottomNavBar: React.FC<BottomNavBarProps> = ({ onNewChat, onShowLibrary, onToggleHistory, onShowProfile, activeView }) => {
+const BottomNavBar: React.FC<BottomNavBarProps> = ({ onNewChat, onShowLibrary, onToggleHistory, activeView }) => {
     return (
         <nav className="fixed bottom-0 left-0 right-0 h-16 bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 md:hidden z-40">
             <div className="flex items-center justify-around h-full max-w-md mx-auto">
@@ -48,11 +47,6 @@ const BottomNavBar: React.FC<BottomNavBarProps> = ({ onNewChat, onShowLibrary, o
                     icon={MenuIcon}
                     label="Menu"
                     onClick={onToggleHistory}
-                />
-                 <NavButton
-                    icon={UserIcon}
-                    label="Profile"
-                    onClick={onShowProfile}
                 />
             </div>
         </nav>

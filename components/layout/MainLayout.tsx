@@ -11,7 +11,6 @@ import { generateChatResponse, generateTitleForChat, performWebSearch } from '..
 import { generateImage } from '../../services/imageService';
 import BottomNavBar from './BottomNavBar';
 import { resizeImageFromDataUrl } from '../../utils/imageUtils';
-import ProfileModal from './ProfileModal';
 
 const ACTIVE_SESSION_ID_KEY = 'stefan_gpt_active_session_id';
 
@@ -48,7 +47,6 @@ const MainLayout: React.FC = () => {
   const [view, setView] = useState<ViewType>('chat');
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -356,11 +354,9 @@ const MainLayout: React.FC = () => {
             onNewChat={handleNewChat}
             onShowLibrary={handleShowLibrary}
             onToggleHistory={() => setIsHistoryPanelOpen(true)}
-            onShowProfile={() => setIsProfileModalOpen(true)}
             activeView={view}
         />
        )}
-       <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
     </div>
   );
 };
