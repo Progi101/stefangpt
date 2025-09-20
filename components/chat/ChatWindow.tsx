@@ -410,12 +410,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMess
                         {isLoading && (
                             <div className="flex items-start gap-4">
                                 <div className="flex items-center gap-3 max-w-xl px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
-                                    <div className="relative w-6 h-6 shrink-0">
-                                        <svg className="w-full h-full animate-spin text-blue-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M12 2.75C17.108 2.75 21.25 6.892 21.25 12C21.25 17.108 17.108 21.25 12 21.25C6.892 21.25 2.75 17.108 2.75 12C2.75 7.844 5.922 4.103 10 3.066"
-                                                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                         <Icon icon={LogoIcon} className="w-4 h-4 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                    <div className="w-6 h-6 shrink-0">
+                                        <Icon icon={LogoIcon} className="w-full h-full animate-spin text-blue-500" />
                                     </div>
                                     <span className="font-medium">{loadingMessage || 'Thinking...'}</span>
                                 </div>
