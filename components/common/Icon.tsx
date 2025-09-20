@@ -183,4 +183,12 @@ export const ChevronDownIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) 
     </svg>
 );
 
+export const LogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" />
+        <circle cx="9" cy="10" r="1" fill="currentColor" strokeWidth="0" />
+        <circle cx="15" cy="10" r="1" fill="currentColor" strokeWidth="0" />
+    </svg>
+);
+
 export default Icon;
