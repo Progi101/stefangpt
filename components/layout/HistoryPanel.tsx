@@ -68,7 +68,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
         </div>
 
         {/* Main scrollable area */}
-        <div className="flex-1 overflow-y-auto my-4 pr-1 -mr-3">
+        <div className="flex-1 overflow-y-auto my-4 pr-1 -mr-3 min-h-0">
           <div className="space-y-1">
             {filteredSessions.map((session) => (
               <button
