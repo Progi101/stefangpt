@@ -1,12 +1,33 @@
-
-
-import React, { useState, Fragment } from 'react';
+import React, { useState, Fragment, useEffect } from 'react';
 import { ChatSession } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import Icon, { PlusCircleIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, SettingsIcon, SunIcon, MoonIcon, XIcon, InformationCircleIcon, ChatBubbleLeftRightIcon } from '../common/Icon';
 import Logo from '../common/Logo';
 import { marked } from 'marked';
+
+const HorizontalAd: React.FC = () => {
+  useEffect(() => {
+    try {
+      ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+    } catch (e) {
+      console.error("AdSense error:", e);
+    }
+  }, []);
+
+  return (
+    <div className="px-1 md:px-0 md:hidden md:group-hover:block my-4">
+        <ins
+          className="adsbygoogle"
+          style={{ display: 'block' }}
+          data-ad-client="ca-pub-3127221679293637"
+          data-ad-slot="6981011474"
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        ></ins>
+    </div>
+  );
+};
 
 interface HistoryPanelProps {
   sessions: ChatSession[];
@@ -83,6 +104,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
             ))}
           </div>
         </div>
+
+        <HorizontalAd />
 
         {/* Footer buttons, now sticky at the bottom */}
         <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 pt-2 space-y-1">
