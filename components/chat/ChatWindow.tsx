@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatSession, Message, MessageSender, CodeFile } from '../../types';
 import Icon, { SendIcon, MenuIcon, XIcon, PaperclipIcon, StopIcon, CameraIcon, LogoIcon } from '../common/Icon';
@@ -8,11 +6,54 @@ import { resizeImageFromFile } from '../../utils/imageUtils';
 import ModelSwitcher from './ModelSwitcher';
 import { AiModel } from '../layout/MainLayout';
 
+const VerticalAd: React.FC = () => {
+  const adRef = useRef<HTMLModElement>(null);
+  const pushed = useRef(false);
+
+  useEffect(() => {
+    const adElement = adRef.current;
+    if (!adElement) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !pushed.current) {
+        try {
+          ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+          pushed.current = true;
+        } catch (e) {
+          console.error("AdSense error:", e);
+        } finally {
+          observer.disconnect();
+        }
+      }
+    }, { threshold: 0.01 });
+
+    observer.observe(adElement);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return (
+    <div className="w-48 shrink-0 h-full">
+        <div className="sticky top-0 h-screen py-6">
+             <ins
+                ref={adRef}
+                className="adsbygoogle"
+                style={{ display: 'block', width: '160px', height: '600px' }}
+                data-ad-client="ca-pub-3127221679293637"
+                data-ad-slot="9236968714"
+             ></ins>
+        </div>
+    </div>
+  );
+};
+
 interface ChatWindowProps {
     session: ChatSession;
     isLoading: boolean;
     loadingMessage: string;
-    onSendMessage: (prompt: string, attachments?: { dataUrl: string; mimeType: string; }[]) => Promise<void>;
+    onSendMessage: (prompt: string, attachments?: { dataUrl:string; mimeType: string; }[]) => Promise<void>;
     onCancelGeneration: () => void;
     onToggleHistory: () => void;
     selectedModel: AiModel;
@@ -192,6 +233,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMess
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isExtraLargeScreen = useMediaQuery('(min-width: 1280px)');
   const prevIsLoadingRef = useRef<boolean>(isLoading);
   
   const MAX_TOTAL_SIZE_MB = 5.5;
@@ -393,32 +435,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMess
                 <ModelSwitcher selectedModel={selectedModel} onModelChange={onModelChange} />
             </header>
             
-            <div className="flex-1 overflow-y-auto p-6">
-                <div className="max-w-4xl mx-auto">
-                    <div className="p-3 mb-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="flex justify-between items-center mb-1">
-                            <p className="font-semibold">Quick Commands:</p>
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">BETA</span>
-                        </div>
-                        <p><strong className="font-medium text-gray-800 dark:text-gray-100">For Images:</strong> <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">generate</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">create</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">draw</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">image of</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">picture of</code></p>
-                        <p className="mt-1"><strong className="font-medium text-gray-800 dark:text-gray-100">For Searches:</strong> <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">search</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">find</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">google</code></p>
-                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Note: Image generation uses the free Stable Horde network and may be slow during busy times.</p>
-                    </div>
+            <div className="flex-1 overflow-y-auto">
+                <div className="flex justify-center w-full relative">
+                    {isExtraLargeScreen && <VerticalAd />}
 
-                    <div className="space-y-6">
-                        {session.messages.map(message => <ChatMessage key={message.id} message={message} onOpenFile={setSidePanelFile} />)}
-                        {isLoading && (
-                            <div className="flex items-start gap-4">
-                                <div className="flex items-center gap-3 max-w-xl px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
-                                    <div className="w-6 h-6 shrink-0">
-                                        <Icon icon={LogoIcon} className="w-full h-full animate-spin text-blue-500" />
-                                    </div>
-                                    <span className="font-medium">{loadingMessage || 'Thinking...'}</span>
-                                </div>
+                    <div className="max-w-4xl w-full p-6">
+                        <div className="p-3 mb-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300">
+                            <div className="flex justify-between items-center mb-1">
+                                <p className="font-semibold">Quick Commands:</p>
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full">BETA</span>
                             </div>
-                        )}
-                        <div ref={messagesEndRef} />
+                            <p><strong className="font-medium text-gray-800 dark:text-gray-100">For Images:</strong> <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">generate</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">create</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">draw</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">image of</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">picture of</code></p>
+                            <p className="mt-1"><strong className="font-medium text-gray-800 dark:text-gray-100">For Searches:</strong> <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">search</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">find</code>, <code className="text-xs bg-gray-200 dark:bg-gray-800 p-1 rounded">google</code></p>
+                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Note: Image generation uses the free Stable Horde network and may be slow during busy times.</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            {session.messages.map(message => <ChatMessage key={message.id} message={message} onOpenFile={setSidePanelFile} />)}
+                            {isLoading && (
+                                <div className="flex items-start gap-4">
+                                    <div className="flex items-center gap-3 max-w-xl px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100">
+                                        <div className="w-6 h-6 shrink-0">
+                                            <Icon icon={LogoIcon} className="w-full h-full animate-spin text-blue-500" />
+                                        </div>
+                                        <span className="font-medium">{loadingMessage || 'Thinking...'}</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
                     </div>
+                    {isExtraLargeScreen && <VerticalAd />}
                 </div>
             </div>
 

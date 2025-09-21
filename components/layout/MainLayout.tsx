@@ -364,7 +364,7 @@ const MainLayout: React.FC = () => {
       )}
       <div className={`
           group
-          fixed md:relative h-full shrink-0 z-30
+          fixed top-0 left-0 bottom-16 md:relative md:h-full shrink-0 z-30
           w-4/5 sm:w-80 
           bg-slate-100 dark:bg-slate-900
           transition-all duration-300 ease-in-out

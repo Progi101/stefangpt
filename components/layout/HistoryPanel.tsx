@@ -1,4 +1,4 @@
-import React, { useState, Fragment, useEffect } from 'react';
+import React, { useState, Fragment, useEffect, useRef } from 'react';
 import { ChatSession } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -7,17 +7,39 @@ import Logo from '../common/Logo';
 import { marked } from 'marked';
 
 const HorizontalAd: React.FC = () => {
+  const adRef = useRef<HTMLModElement>(null);
+  const pushed = useRef(false);
+
   useEffect(() => {
-    try {
-      ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-    } catch (e) {
-      console.error("AdSense error:", e);
-    }
+    const adElement = adRef.current;
+    if (!adElement) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      // isIntersecting is true when the element is visible in the viewport
+      if (entries[0].isIntersecting && !pushed.current) {
+        try {
+          ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+          pushed.current = true; // Mark as pushed to avoid duplicates
+        } catch (e) {
+          console.error("AdSense error:", e);
+        } finally {
+          // We've done our job, so disconnect the observer
+          observer.disconnect();
+        }
+      }
+    }, { threshold: 0.01 }); // Trigger when at least 1% of the ad is visible
+
+    observer.observe(adElement);
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   return (
-    <div className="px-1 md:px-0 md:hidden md:group-hover:block my-4">
+    <div className="my-4 px-1">
         <ins
+          ref={adRef}
           className="adsbygoogle"
           style={{ display: 'block' }}
           data-ad-client="ca-pub-3127221679293637"
@@ -89,8 +111,8 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
         </div>
 
         {/* Main scrollable area */}
-        <div className="flex-1 overflow-y-auto my-4 -mr-3 pr-2 md:hidden md:group-hover:block">
-          <div className="space-y-1">
+        <div className="flex-1 overflow-y-auto my-4 -mr-3 pr-2">
+          <div className="space-y-1 md:hidden md:group-hover:block">
             {filteredSessions.map((session) => (
               <button
                 key={session.id}
@@ -103,9 +125,11 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
               </button>
             ))}
           </div>
+          <div className="md:hidden md:group-hover:block">
+            <HorizontalAd />
+          </div>
         </div>
 
-        <HorizontalAd />
 
         {/* Footer buttons, now sticky at the bottom */}
         <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 pt-2 space-y-1">
