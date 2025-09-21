@@ -125,7 +125,7 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
               </button>
             ))}
           </div>
-          <div className="md:hidden md:group-hover:block">
+          <div className="hidden md:group-hover:block">
             <HorizontalAd />
           </div>
         </div>
