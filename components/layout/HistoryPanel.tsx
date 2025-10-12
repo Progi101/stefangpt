@@ -6,51 +6,6 @@ import Icon, { PlusCircleIcon, SearchIcon, LibraryIcon, UserIcon, LogoutIcon, Se
 import Logo from '../common/Logo';
 import { marked } from 'marked';
 
-const HorizontalAd: React.FC = () => {
-  const adRef = useRef<HTMLModElement>(null);
-  const pushed = useRef(false);
-
-  useEffect(() => {
-    const adElement = adRef.current;
-    if (!adElement) return;
-
-    const observer = new IntersectionObserver((entries) => {
-      // isIntersecting is true when the element is visible in the viewport
-      if (entries[0].isIntersecting && !pushed.current) {
-        try {
-          ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-          pushed.current = true; // Mark as pushed to avoid duplicates
-        } catch (e) {
-          console.error("AdSense error:", e);
-        } finally {
-          // We've done our job, so disconnect the observer
-          observer.disconnect();
-        }
-      }
-    }, { threshold: 0.01 }); // Trigger when at least 1% of the ad is visible
-
-    observer.observe(adElement);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
-  return (
-    <div className="my-4 px-1">
-        <ins
-          ref={adRef}
-          className="adsbygoogle"
-          style={{ display: 'block' }}
-          data-ad-client="ca-pub-3127221679293637"
-          data-ad-slot="6981011474"
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        ></ins>
-    </div>
-  );
-};
-
 interface HistoryPanelProps {
   sessions: ChatSession[];
   activeSessionId: string | null;
@@ -124,9 +79,6 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ sessions, activeSessionId, 
               >
               </button>
             ))}
-          </div>
-          <div className="hidden md:group-hover:block">
-            <HorizontalAd />
           </div>
         </div>
 

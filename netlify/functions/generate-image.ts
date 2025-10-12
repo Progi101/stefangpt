@@ -34,6 +34,8 @@ export const handler: Handler = async (event) => {
                     n: 1,
                     width: 512,
                     height: 512,
+                    nsfw: true,
+                    censor_nsfw: true,
                 },
             }),
         });

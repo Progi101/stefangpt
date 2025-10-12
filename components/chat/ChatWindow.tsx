@@ -6,49 +6,6 @@ import { resizeImageFromFile } from '../../utils/imageUtils';
 import ModelSwitcher from './ModelSwitcher';
 import { AiModel } from '../layout/MainLayout';
 
-const VerticalAd: React.FC = () => {
-  const adRef = useRef<HTMLModElement>(null);
-  const pushed = useRef(false);
-
-  useEffect(() => {
-    const adElement = adRef.current;
-    if (!adElement) return;
-
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !pushed.current) {
-        try {
-          ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-          pushed.current = true;
-        } catch (e) {
-          console.error("AdSense error:", e);
-        } finally {
-          observer.disconnect();
-        }
-      }
-    }, { threshold: 0.01 });
-
-    observer.observe(adElement);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
-  return (
-    <div className="w-48 shrink-0 h-full">
-        <div className="sticky top-0 h-screen py-6">
-             <ins
-                ref={adRef}
-                className="adsbygoogle"
-                style={{ display: 'block', width: '160px', height: '600px' }}
-                data-ad-client="ca-pub-3127221679293637"
-                data-ad-slot="9236968714"
-             ></ins>
-        </div>
-    </div>
-  );
-};
-
 interface ChatWindowProps {
     session: ChatSession;
     isLoading: boolean;
@@ -233,7 +190,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMess
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDesktop = useMediaQuery('(min-width: 768px)');
-  const isExtraLargeScreen = useMediaQuery('(min-width: 1280px)');
   const prevIsLoadingRef = useRef<boolean>(isLoading);
   
   const MAX_TOTAL_SIZE_MB = 5.5;
@@ -437,8 +393,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMess
             
             <div className="flex-1 overflow-y-auto">
                 <div className="flex justify-center w-full relative">
-                    {isExtraLargeScreen && <VerticalAd />}
-
                     <div className="max-w-4xl w-full p-6">
                         <div className="p-3 mb-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300">
                             <div className="flex justify-between items-center mb-1">
@@ -465,7 +419,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ session, isLoading, loadingMess
                             <div ref={messagesEndRef} />
                         </div>
                     </div>
-                    {isExtraLargeScreen && <VerticalAd />}
                 </div>
             </div>
 
